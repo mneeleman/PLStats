@@ -66,7 +66,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.reset_data()
 
     def loadjsonfiles(self):
-        files = glob.iglob(self.directory + '/**/pipeline_stats*.json', recursive=True)
+        files = glob.iglob(self.directory + '*/working/pipeline_stats*.json', recursive=True)
         for jsonfile in files:
             self.statslist.append(StatsObject(jsonfile))
         if len(self.statslist) == 0:
