@@ -1,3 +1,4 @@
+import os
 import sys
 import glob
 from plstatsutils import StatsObject
@@ -65,7 +66,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.reset_data()
 
     def loadjsonfiles(self):
-        files = glob.iglob(self.directory + '/**/*.json', recursive=True)
+        files = glob.iglob(self.directory + '/**/pipeline_stats*.json', recursive=True)
         for jsonfile in files:
             self.statslist.append(StatsObject(jsonfile))
         if len(self.statslist) == 0:
@@ -286,8 +287,8 @@ def main():
     if len(sys.argv) == 1:
         print('cfgui: taking current directory as input')
         qapp = QtWidgets.QApplication(['1'])
-        # appw = ApplicationWindow(os.getcwd())
-        appw = ApplicationWindow('/Users/mneelema/PLWG/TestData/StatFiles')  # for testing puproses
+        appw = ApplicationWindow(os.getcwd())
+        # appw = ApplicationWindow('/Users/mneelema/PLWG/TestData/StatFiles')  # for testing puproses
     else:
         qapp = QtWidgets.QApplication(['1'])
         appw = ApplicationWindow(sys.argv[1])
