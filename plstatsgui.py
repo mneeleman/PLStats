@@ -66,7 +66,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.reset_data()
 
     def loadjsonfiles(self):
-        files = glob.iglob(self.directory + '*/working/pipeline_stats*.json', recursive=True)
+        files = glob.iglob(self.directory + '/*/working/pipeline_stats*.json', recursive=True)
         for jsonfile in files:
             self.statslist.append(StatsObject(jsonfile))
         if len(self.statslist) == 0:
@@ -164,7 +164,10 @@ class ApplicationWindow(QtWidgets.QWidget):
                 model.setItem(idx1, 0, newitem)
                 for idx2, y in enumerate(self.mousheadsel):
                     newitem = QtGui.QStandardItem()
-                    value = x.data[y]['value']
+                    try:
+                        value = x.data[y]['value']
+                    except KeyError:
+                        value = ''
                     newitem.setData(str(value), QtCore.Qt.DisplayRole)
                     if idx1 == 0:
                         hhlabels.append(str(y) + ' (' + str(type(value))[8:-2] + ')')
