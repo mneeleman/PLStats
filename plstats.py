@@ -34,6 +34,7 @@ class PLStats:
         self = cls()
         self.tablelist = tablelist
         self.mous = load_tables(tablelist)
+        return self
 
     @classmethod
     def from_workingdir(cls, workdir):
