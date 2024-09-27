@@ -6,7 +6,7 @@ import numpy as np
 def get_tablelist(inputdir):
     # look in directory itself else try the standard pl directory structure
     lst = glob.glob(inputdir + '/*.tbl')
-    if lst is None:
+    if not lst:
         lst = glob.glob(inputdir + '/S*/G*/M*/working/*.tbl')
     return lst
 
