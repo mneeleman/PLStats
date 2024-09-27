@@ -1,13 +1,10 @@
 import os
 import sys
 import glob
-from plstatsutils import StatsObject
+from plstats import PLStats
 from copy import deepcopy as dc
 import numpy as np
-# from matplotlib.backends.backend_qtagg import FigureCanvasAgg
-# from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.qt_compat import QtWidgets, QtCore, QtGui
-# from matplotlib.figure import Figure
 
 
 class ApplicationWindow(QtWidgets.QWidget):
@@ -27,11 +24,11 @@ class ApplicationWindow(QtWidgets.QWidget):
         # create the headers from the first stats file
         self.mousheaders = self.statslist[0].get_keywords(ignore=['EB', 'SPW', 'TARGET'])
         self.ebheaders = self.statslist[0].get_keywords(level='EB',
-                                                        sublevel=self.statslist[0].data['eb_list']['value'][0])
+                                                        sublevel=self.statslist[0].mous['eb_list']['value'][0])
         self.spwheaders = self.statslist[0].get_keywords(level='SPW',
-                                                         sublevel=self.statslist[0].data['spw_list']['value'][0])
+                                                         sublevel=self.statslist[0].mous['spw_list']['value'][0])
         self.targetheaders = self.statslist[0].get_keywords(level='TARGET',
-                                                            sublevel=self.statslist[0].data['target_list']['value'][0])
+                                                            sublevel=self.statslist[0].mous['target_list']['value'][0])
         self.mousheadsel = []
         self.ebheadsel = []
         self.spwheadsel = []
@@ -68,7 +65,7 @@ class ApplicationWindow(QtWidgets.QWidget):
     def loadjsonfiles(self):
         files = glob.iglob(self.directory + '/*/working/pipeline_stats*.json', recursive=True)
         for jsonfile in files:
-            self.statslist.append(StatsObject(jsonfile))
+            self.statslist.append(PLStats.from_statsfile(jsonfile))
         if len(self.statslist) == 0:
             raise IOError('No json stat files found in: {}'.format(self.directory))
         self.newstatslist = dc(self.statslist)
@@ -160,12 +157,12 @@ class ApplicationWindow(QtWidgets.QWidget):
             hhlabels = ['PID (str)']
             for idx1, x in enumerate(self.newstatslist):
                 newitem = QtGui.QStandardItem()
-                newitem.setData(str(x.name), QtCore.Qt.DisplayRole)
+                newitem.setData(str(x.mousname), QtCore.Qt.DisplayRole)
                 model.setItem(idx1, 0, newitem)
                 for idx2, y in enumerate(self.mousheadsel):
                     newitem = QtGui.QStandardItem()
                     try:
-                        value = x.data[y]['value']
+                        value = x.mous[y]['value']
                     except KeyError:
                         value = ''
                     newitem.setData(str(value), QtCore.Qt.DisplayRole)
@@ -176,11 +173,11 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.update_tableview(model)
 
     def update_perxtable(self, xval, n_x, n_xheadsel, x_list):
-        rowlength = np.sum([x.data[n_x]['value'] for x in self.newstatslist])
+        rowlength = np.sum([x.mous[n_x]['value'] for x in self.newstatslist])
         columnlength = len(n_xheadsel) + len(self.mousheadsel) + 2
-        firstxdict = self.newstatslist[0].data[xval][self.newstatslist[0].data[x_list]['value'][0]]
+        firstxdict = self.newstatslist[0].mous[xval][self.newstatslist[0].mous[x_list]['value'][0]]
         headers = ['PID (str)', xval + ' (str)']
-        header2 = ([x + ' (' + str(type(self.newstatslist[0].data[x]['value']))[8:-2] + ')' for x in self.mousheadsel] +
+        header2 = ([x + ' (' + str(type(self.newstatslist[0].mous[x]['value']))[8:-2] + ')' for x in self.mousheadsel] +
                    [x + ' (' + str(type(firstxdict[x]['value']))[8:-2] + ')' for x in n_xheadsel])
         headers.extend(header2)
         model = QtGui.QStandardItemModel(rowlength, columnlength)
@@ -188,20 +185,20 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.nrows_label.setText('Number of rows: {}'.format(rowlength))
         rownumber = 0
         for idx1, x in enumerate(self.newstatslist):
-            for idx2, y in enumerate(x.data[x_list]['value']):
+            for idx2, y in enumerate(x.mous[x_list]['value']):
                 newitem = QtGui.QStandardItem()
-                newitem.setData(str(x.name), QtCore.Qt.DisplayRole)
+                newitem.setData(str(x.mousname), QtCore.Qt.DisplayRole)
                 model.setItem(rownumber, 0, newitem)
                 newitem = QtGui.QStandardItem()
                 newitem.setData(str(y), QtCore.Qt.DisplayRole)
                 model.setItem(rownumber, 1, newitem)
                 for idx3, z1 in enumerate(self.mousheadsel):
                     newitem = QtGui.QStandardItem()
-                    newitem.setData(str(x.data[z1]['value']), QtCore.Qt.DisplayRole)
+                    newitem.setData(str(x.mous[z1]['value']), QtCore.Qt.DisplayRole)
                     model.setItem(rownumber, idx3 + 2, newitem)
                 for idx4, z2 in enumerate(n_xheadsel):
                     newitem = QtGui.QStandardItem()
-                    newitem.setData(str(x.data[xval][y][z2]['value']), QtCore.Qt.DisplayRole)
+                    newitem.setData(str(x.mous[xval][y][z2]['value']), QtCore.Qt.DisplayRole)
                     model.setItem(rownumber, len(self.mousheadsel) + idx4 + 2, newitem)
                 rownumber += 1
         self.update_tableview(model)
@@ -233,22 +230,22 @@ class ApplicationWindow(QtWidgets.QWidget):
 
     def apply_mouscriterion(self):
         try:
-            crit = type(self.newstatslist[0].data[self.criterion1.text()]['value'])(self.criterion3.text())
+            crit = type(self.newstatslist[0].mous[self.criterion1.text()]['value'])(self.criterion3.text())
         except ValueError:
             self.criterion4.setText('Inconsistent type for {}'.format(self.criterion1))
             return
-        criterion = {'==': [x for x in self.newstatslist if x.data[self.criterion1.text()]['value'] == crit],
-                     '!=': [x for x in self.newstatslist if x.data[self.criterion1.text()]['value'] != crit],
-                     '>=': [x for x in self.newstatslist if x.data[self.criterion1.text()]['value'] >= crit],
-                     '<=': [x for x in self.newstatslist if x.data[self.criterion1.text()]['value'] <= crit],
+        criterion = {'==': [x for x in self.newstatslist if x.mous[self.criterion1.text()]['value'] == crit],
+                     '!=': [x for x in self.newstatslist if x.mous[self.criterion1.text()]['value'] != crit],
+                     '>=': [x for x in self.newstatslist if x.mous[self.criterion1.text()]['value'] >= crit],
+                     '<=': [x for x in self.newstatslist if x.mous[self.criterion1.text()]['value'] <= crit],
                      'contains': [x for x in self.newstatslist
-                                  if self.criterion3.text() in str(x.data[self.criterion1.text()]['value'])]}
+                                  if self.criterion3.text() in str(x.mous[self.criterion1.text()]['value'])]}
         self.newstatslist = criterion[self.criterion2.currentText()]
         self.update_table()
 
     def apply_xciterion(self, xval, n_x, x_list):
         try:
-            row = self.newstatslist[0].data
+            row = self.newstatslist[0].mous
             crit = type(row[xval][row[x_list]['value'][0]][self.criterion1.text()]['value'])(self.criterion3.text())
         except ValueError:
             self.criterion4.setText('Inconsistent type for {}'.format(self.criterion1))
@@ -256,20 +253,20 @@ class ApplicationWindow(QtWidgets.QWidget):
         projects = [x for x in self.newstatslist]
         for x in projects:
             tlist = []
-            for y in x.data[x_list]['value']:
-                criterion = {'==': x.data[xval][y][self.criterion1.text()]['value'] == crit,
-                             '!=': x.data[xval][y][self.criterion1.text()]['value'] != crit,
-                             '>=': x.data[xval][y][self.criterion1.text()]['value'] >= crit,
-                             '<=': x.data[xval][y][self.criterion1.text()]['value'] <= crit,
-                             'contains': self.criterion3.text() in str(x.data[xval][y]
+            for y in x.mous[x_list]['value']:
+                criterion = {'==': x.mous[xval][y][self.criterion1.text()]['value'] == crit,
+                             '!=': x.mous[xval][y][self.criterion1.text()]['value'] != crit,
+                             '>=': x.mous[xval][y][self.criterion1.text()]['value'] >= crit,
+                             '<=': x.mous[xval][y][self.criterion1.text()]['value'] <= crit,
+                             'contains': self.criterion3.text() in str(x.mous[xval][y]
                                                                        [self.criterion1.text()]['value'])}
                 if not criterion[self.criterion2.currentText()]:
-                    del x.data[xval][y]
-                    x.data[n_x]['value'] -= 1
+                    del x.mous[xval][y]
+                    x.mous[n_x]['value'] -= 1
                 else:
                     tlist.append(y)
-            x.data[x_list]['value'] = tlist
-            if x.data[n_x]['value'] <= 0:
+            x.mous[x_list]['value'] = tlist
+            if x.mous[n_x]['value'] <= 0:
                 self.newstatslist.remove(x)
         self.update_table()
 
