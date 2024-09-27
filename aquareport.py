@@ -10,7 +10,6 @@ def load_aquareport(arfile):
 
 
 def get_projectinfo(ar, mous):
-    ps = ar.find('ProjectStructure')
     mous['proposal_code'] = {'value': list(ar.iter('ProposalCode'))[0].text}
     mous['pipeline_recipe'] = {'value': list(ar.iter('ProcessingProcedure'))[0].text}
     mous['project_id'] = {'value': list(ar.iter('OusEntityId'))[0].text}
