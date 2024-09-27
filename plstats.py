@@ -57,6 +57,7 @@ class PLStats:
             tabobj = {'mous': {}}
         self.mous = self.__mergedict__(statsobj.mous, arobj.mous)
         self.mous = self.__mergedict__(self.mous, tabobj.mous)
+        return self
 
     def get_keywords(self, level='MOUS', sublevel='', ignore=None):
         if level == 'MOUS':
