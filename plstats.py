@@ -42,7 +42,7 @@ class PLStats:
         self.workdir = workdir
         self.statsfile = glob.glob(workdir + '/pipeline_stats_*.json')[0].split('/')[-1]
         if self.statsfile:
-            statsobj = self.from_statsfile(self.statsfile)
+            statsobj = self.from_statsfile(workdir + '/' + self.statsfile)
         else:
             statsobj = {'mous: {}'}
         self.arfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
