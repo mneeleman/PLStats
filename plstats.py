@@ -40,13 +40,23 @@ class PLStats:
     def from_workingdir(cls, workdir):
         self = cls()
         self.workdir = workdir
-        self.arfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
-        self.tablelist = [x.split('/')[-1] for x in glob.glob(workdir + '/*.tbl')]
         self.statsfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
-        stats_dict = self.from_statsfile(self.statsfile)
-
-    def __init__(self):
-        self.mous = {}
+        if self.statsfile:
+            statsobj = self.from_statsfile(self.statsfile)
+        else:
+            statsobj = {'mous: {}'}
+        self.arfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
+        if self.arfile:
+            arobj = self.from_aquareport(self.statsfile)
+        else:
+            arobj = {'mous': {}}
+        self.tablelist = [x.split('/')[-1] for x in glob.glob(workdir + '/*.tbl')]
+        if self.tablelist:
+            tabobj = self.from_tablelist(self.statsfile)
+        else:
+            tabobj = {'mous': {}}
+        self.mous = self.__mergedict__(statsobj.mous, arobj.mous)
+        self.mous = self.__mergedict__(self.mous, tabobj.mous)
 
     def get_keywords(self, level='MOUS', sublevel='', ignore=None):
         if level == 'MOUS':
@@ -62,6 +72,9 @@ class PLStats:
             else:
                 keywords.pop(keywords.index(ignore))
         return keywords
+
+    def __init__(self):
+        self.mous = {}
 
     def __mergedict__(self, a: dict, b: dict, path=None):
         if path is None:
