@@ -15,7 +15,7 @@ def load_tables(inputobj):
     if type(inputobj) == list:
         tablelist = inputobj
     else:
-        tablelist = inputobj
+        tablelist = get_tablelist(inputobj)
     eb = {'EB': {}}
     for tname in tablelist:
         t = table()
