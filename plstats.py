@@ -40,8 +40,10 @@ class PLStats:
     def from_workingdir(cls, workdir):
         self = cls()
         self.workdir = workdir
-        self.arfile = glob.glob(workdir + '/pipeline_stats_*.json')[0].split('/')[-1]
+        self.arfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
         self.tablelist = [x.split('/')[-1] for x in glob.glob(workdir + '/*.tbl')]
+        self.statsfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
+        stats_dict = self.from_statsfile(self.statsfile)
 
     def __init__(self):
         self.mous = {}
@@ -60,3 +62,16 @@ class PLStats:
             else:
                 keywords.pop(keywords.index(ignore))
         return keywords
+
+    def __mergedict__(self, a: dict, b: dict, path=None):
+        if path is None:
+            path = []
+        for key in b:
+            if key in a:
+                if isinstance(a[key], dict) and isinstance(b[key], dict):
+                    self.__mergedict__(a[key], b[key], path + [str(key)])
+                # elif a[key] != b[key]:
+                #     raise Exception('Conflict at ' + '.'.join(path + [str(key)]))
+            else:
+                a[key] = b[key]
+        return a
