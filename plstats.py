@@ -52,7 +52,7 @@ class PLStats:
             arobj = {'mous': {}}
         self.tablelist = [x.split('/')[-1] for x in glob.glob(workdir + '/*.tbl')]
         if self.tablelist:
-            tabobj = self.from_tablelist(self.workdir + '/' + self.tablelist)
+            tabobj = self.from_tablelist([self.workdir + '/' + x for x in self.tablelist])
         else:
             tabobj = {'mous': {}}
         self.mous = self.__mergedict__(statsobj.mous, arobj.mous)
