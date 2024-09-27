@@ -3,11 +3,19 @@ from casatools import table
 import numpy as np
 
 
-def get_tablelist(pldir):
-    return glob.glob(pldir + '/S*/G*/M*/working/*.tbl')
+def get_tablelist(inputdir):
+    # look in directory itself else try the standard pl directory structure
+    lst = glob.glob(inputdir + '/*.tbl')
+    if lst is None:
+        lst = glob.glob(inputdir + '/S*/G*/M*/working/*.tbl')
+    return lst
 
 
-def load_tables(tablelist):
+def load_tables(inputobj):
+    if type(inputobj) == list:
+        tablelist = inputobj
+    else:
+        tablelist = inputobj
     eb = {'EB': {}}
     for tname in tablelist:
         t = table()
