@@ -69,14 +69,14 @@ class PLStats:
     def __init__(self):
         self.mous = {}
 
-    def __mergedict__(self, b: dict, path=None):
+    def __mergedict__(self, b: dict, a=None, path=None):
+        if not a:
+            a = self.mous
         if path is None:
             path = []
         for key in b:
-            if key in self.mous.keys():
-                if isinstance(self.mous[key], dict) and isinstance(b[key], dict):
-                    self.__mergedict__(b[key], path + [str(key)])
-                # elif a[key] != b[key]:
-                #     raise Exception('Conflict at ' + '.'.join(path + [str(key)]))
+            if key in a.keys():
+                if isinstance(a[key], dict) and isinstance(b[key], dict):
+                    self.__mergedict__(b[key], a=a[key], path=path + [str(key)])
             else:
-                self.mous[key] = b[key]
+                a[key] = b[key]
