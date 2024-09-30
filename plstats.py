@@ -42,21 +42,13 @@ class PLStats:
         self.workdir = workdir
         self.statsfile = glob.glob(workdir + '/pipeline_stats_*.json')[0].split('/')[-1]
         if self.statsfile:
-            statsobj = self.from_statsfile(self.workdir + '/' + self.statsfile)
-        else:
-            statsobj = {'mous: {}'}
+            self.__mergedict__(self.from_statsfile(self.workdir + '/' + self.statsfile).mous)
         self.arfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
         if self.arfile:
-            arobj = self.from_aquareport(self.workdir + '/' + self.arfile)
-        else:
-            arobj = {'mous': {}}
+            self.__mergedict__(self.from_aquareport(self.workdir + '/' + self.arfile).mous)
         self.tablelist = [x.split('/')[-1] for x in glob.glob(workdir + '/*.tbl')]
         if self.tablelist:
-            tabobj = self.from_tablelist([self.workdir + '/' + x for x in self.tablelist])
-        else:
-            tabobj = {'mous': {}}
-        self.mous = self.__mergedict__(statsobj.mous, arobj.mous)
-        self.mous = self.__mergedict__(self.mous, tabobj.mous)
+            self.__mergedict__(self.from_tablelist([self.workdir + '/' + x for x in self.tablelist]).mous)
         return self
 
     def get_keywords(self, level='MOUS', sublevel='', ignore=None):
