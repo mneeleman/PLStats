@@ -9,7 +9,7 @@ def compare_timestats(inputdir1, inputdir2, tasklist=None):
     ex_stage1 = stages1[list(stages1.keys())[0]]
     ex_stage2 = stages2[list(stages2.keys())[0]]
     tasklist = __get_tasklistfromstagesdict__(ex_stage1, ex_stage2, tasklist=tasklist)
-    comptime = {}
+    comptime = {'proposal_code': []}
     for idx in tasklist:
         comptime[idx[0] + ':' + ex_stage1[idx[0]]['stage_name']['value']] = {'dir1': [], 'dir2': [], 'diff': []}
     for s1 in stages1:
@@ -19,6 +19,7 @@ def compare_timestats(inputdir1, inputdir2, tasklist=None):
         except KeyError:
             print('Project: {} does not exist in directory: {}'.format(s1, inputdir2))
             continue
+        comptime['proposal_code'].append(s1)
         for idx in tasklist:
             val1 = stages1[s1][idx[0]]['task_time']['value']
             val2 = s2[idx[1]]['task_time']['value']
