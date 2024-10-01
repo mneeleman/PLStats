@@ -14,9 +14,9 @@ def get_stages(inputdir, overwrite=True):
         except IndexError:
             arfile = glob.glob(workdir + '/S*/G*/M*/working/pipeline_aquareport.xml')[0]
         try:
-            timefile = glob.glob(workdir + '/working/pipeline-*.timetracker.json')[0]
+            timefile = glob.glob(workdir + '/working/pipeline-*.timetracker.json')[-1]
         except IndexError:
-            timefile = glob.glob(workdir + '/S*/G*/M*/working/pipeline-*.timetracker.json')[0]
+            timefile = glob.glob(workdir + '/S*/G*/M*/working/pipeline-*.timetracker.json')[-1]
         pl = PLStats.from_aquareport(arfile, timefile=timefile)
         if overwrite:
             timestats[pl.mous['proposal_code']['value']] = pl.mous['stages']
