@@ -30,5 +30,5 @@ def get_stages(inputdir, overwrite=True):
 
 
 def __get_workingdirs__(inputdir):
-    files = glob.glob(inputdir + '/*.*.*.*_*_*_*_*_*.*')
+    files = sorted(glob.glob(inputdir + '/*.*.*.*_*_*_*_*_*.*'))
     return files
