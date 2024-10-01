@@ -21,7 +21,7 @@ def compare_timestats(inputdir1, inputdir2, tasklist=None):
         for idx in tasklist:
             val1 = stages1[s1][idx[0]]['task_time']['value']
             val2 = s2[idx[1]]['task_time']['value']
-            diff = (val2 / val1)
+            diff = (val1 / val2)
             comptime[idx[0] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['dir1'].append(val1)
             comptime[idx[0] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['dir2'].append(val2)
             comptime[idx[0] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['diff'].append(diff)
