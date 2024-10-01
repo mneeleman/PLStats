@@ -23,10 +23,10 @@ class PLStats:
         return self
 
     @classmethod
-    def from_aquareport(cls, arfile):
+    def from_aquareport(cls, arfile, timefile=None):
         self = cls()
         self.arfile = arfile
-        self.mous = load_aquareport(arfile)
+        self.mous = load_aquareport(arfile, timefile=timefile)
         return self
 
     @classmethod
@@ -65,6 +65,20 @@ class PLStats:
             else:
                 keywords.pop(keywords.index(ignore))
         return keywords
+
+    def findkeys(self, kv, node=None):
+        if not node:
+            node = self.mous
+        if isinstance(node, list):
+            for i in node:
+                for x in self.findkeys(kv, node=i):
+                    yield x
+        elif isinstance(node, dict):
+            if kv in node:
+                yield node[kv]
+            for j in node.values():
+                for x in self.findkeys(kv, node=j):
+                    yield x
 
     def __init__(self):
         self.mous = {}
