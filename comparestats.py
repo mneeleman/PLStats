@@ -19,6 +19,7 @@ def compare_timestats(inputdir1, inputdir2, tasklist=None):
             print('Project: {} does not exist in directory: {}'.format(s1, inputdir2))
             continue
         for idx in tasklist:
+            print(idx, s1)
             val1 = stages1[s1][idx[0]]['task_time']['value']
             val2 = s2[idx[1]]['task_time']['value']
             diff = (val1 / val2)
