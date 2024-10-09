@@ -31,8 +31,8 @@ def get_stageinfo(ar, mous, timefile=None):
             if key not in stageinfo:
                 stageinfo[key] = {'stage_name': {'value': 'unknown'}, 'qascore': {'value': None}}
             stageinfo[key]['task_time'] = {'value': timeinfo['tasks'][key]['seconds'], 'unit': 'second'}
-        for key in timeinfo['results']:
             stageinfo[key]['result_time'] = {'value': timeinfo['results'][key]['seconds'], 'unit': 'second'}
+            stageinfo[key]['total_time'] = {'value': timeinfo['total'][key]['seconds'], 'unit': 'second'}
     mous['stages'] = stageinfo
     return stageinfo
 

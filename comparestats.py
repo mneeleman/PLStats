@@ -1,9 +1,10 @@
 # this is a place where all of the comparison code lives. This could be
 # comparison between single files or between a list of files.
 from benchmarkstats import get_stages
+import matplotlib.pyplot as plt
 
 
-def compare_timestats(inputdir1, inputdir2, tasklist=None):
+def compare_timestats(inputdir1, inputdir2, tasklist=None, time='task_time', plot=False, **kwargs):
     stages1 = get_stages(inputdir1)
     stages2 = get_stages(inputdir2)
     ex_stage1 = stages1[list(stages1.keys())[0]]
@@ -11,7 +12,8 @@ def compare_timestats(inputdir1, inputdir2, tasklist=None):
     tasklist = __get_tasklistfromstagesdict__(ex_stage1, ex_stage2, tasklist=tasklist)
     comptime = {'proposal_code': []}
     for idx in tasklist:
-        comptime[idx[0] + ':' + ex_stage1[idx[0]]['stage_name']['value']] = {'dir1': [], 'dir2': [], 'diff': []}
+        comptime[idx[0] + ',' + idx[1] + ':' + ex_stage1[idx[0]]['stage_name']['value']] = {'dir1': [],
+                                                                                            'dir2': [], 'diff': []}
     for s1 in stages1:
         print(s1)
         try:
@@ -21,13 +23,55 @@ def compare_timestats(inputdir1, inputdir2, tasklist=None):
             continue
         comptime['proposal_code'].append(s1)
         for idx in tasklist:
-            val1 = stages1[s1][idx[0]]['task_time']['value']
-            val2 = s2[idx[1]]['task_time']['value']
+            val1 = stages1[s1][idx[0]][time]['value']
+            val2 = s2[idx[1]][time]['value']
             diff = (val1 / val2)
-            comptime[idx[0] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['dir1'].append(val1)
-            comptime[idx[0] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['dir2'].append(val2)
-            comptime[idx[0] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['diff'].append(diff)
-    return comptime
+            comptime[idx[0] + ',' + idx[1] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['dir1'].append(val1)
+            comptime[idx[0] + ',' + idx[1] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['dir2'].append(val2)
+            comptime[idx[0] + ',' + idx[1] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['diff'].append(diff)
+    if plot:
+        plot_compare_time_stats(comptime, title=time, **kwargs)
+    else:
+        return comptime
+
+
+def plot_compare_time_stats(comptime, title='', stages=None, ylim=4, figfile=None):
+    if stages:
+        stagenames, nstages = [], []
+        for stage in stages:
+            for key in comptime.keys():
+                if stage in key:
+                    stagenames.append(key.split(':')[1])
+                    nstages.append(key)
+        stages = nstages
+    else:
+        stages = list(comptime.keys())[1:]
+        stagenames = [x.split(':')[1] for x in stages]
+    ds = [comptime[x]['diff'] for x in stages]
+    fig, ax = plt.subplots(1, 1, figsize=(16, 7))
+    plt.subplots_adjust(left=0.06, right=0.98, bottom=0.20, top=0.98)
+    ax.violinplot(ds, showmedians=True)
+    ax.axhline(1, ls='--', color='black')
+    ax.set_xticks([y + 1 for y in range(len(stages))], labels=stagenames, rotation=60, ha='right')
+    ax.set_ylabel('Ratio of time PL2024/PL2023')
+    ax.set_title('Violin plot per task for {}'.format(title))
+    ax.set_ylim(0, ylim)
+    if figfile:
+        plt.savefig(figfile + '_violin.pdf', dpi=300)
+        plt.close()
+    # individual figures
+    for stage, name in zip(stages, stagenames):
+        fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+        plt.subplots_adjust(left=0.14, right=0.98, bottom=0.08, top=0.94)
+        ax.plot(comptime[stage]['dir1'], comptime[stage]['dir2'], 'o', color='black')
+        xmax = max(comptime[stage]['dir1'])
+        ax.plot(comptime[stage]['dir1'], comptime[stage]['dir2'], 'o', color='black')
+        ax.plot([0, xmax], [0, xmax], '--')
+        ax.set_xlabel('PL2024 - time (s)')
+        ax.set_ylabel('PL2023 - time (s)')
+        ax.set_title(stage)
+        plt.savefig(figfile + '_' + stage + '.pdf')
+        plt.close()
 
 
 def __get_tasklistfromstagesdict__(stage1, stage2, tasklist=None):
