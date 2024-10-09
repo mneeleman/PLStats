@@ -32,12 +32,12 @@ def compare_timestats(inputdir1, inputdir2, tasklist=None, time='task_time', plo
             comptime[idx[0] + ',' + idx[1] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['dir2'].append(val2)
             comptime[idx[0] + ',' + idx[1] + ':' + stages1[s1][idx[0]]['stage_name']['value']]['diff'].append(diff)
     if plot:
-        plot_compare_time_stats(comptime, title=time, **kwargs)
+        plot_compare_time_stats(comptime, time=time, **kwargs)
     else:
         return comptime
 
 
-def plot_compare_time_stats(comptime, title='', stages=None, ylim=4, figfile=None):
+def plot_compare_time_stats(comptime, time='', stages=None, ylim=4, figfile=None):
     if stages:
         stagenames, nstages = [], []
         for stage in stages:
@@ -51,12 +51,12 @@ def plot_compare_time_stats(comptime, title='', stages=None, ylim=4, figfile=Non
         stagenames = [x.split(':')[1] for x in stages]
     ds = [comptime[x]['diff'] for x in stages]
     fig, ax = plt.subplots(1, 1, figsize=(16, 7))
-    plt.subplots_adjust(left=0.06, right=0.98, bottom=0.20, top=0.98)
+    plt.subplots_adjust(left=0.06, right=0.98, bottom=0.20, top=0.96)
     ax.violinplot(ds, showmedians=True)
     ax.axhline(1, ls='--', color='black')
     ax.set_xticks([y + 1 for y in range(len(stages))], labels=stagenames, rotation=60, ha='right')
     ax.set_ylabel('Ratio of time PL2024/PL2023')
-    ax.set_title('Violin plot per task for {}'.format(title))
+    ax.set_title('Violin plot per task for {}'.format(time))
     ax.set_ylim(0, ylim)
     if figfile:
         plt.savefig(figfile + '_violin.pdf', dpi=300)
@@ -71,7 +71,7 @@ def plot_compare_time_stats(comptime, title='', stages=None, ylim=4, figfile=Non
         ax.plot([0, xmax], [0, xmax], '--')
         ax.set_xlabel('PL2024 - time (s)')
         ax.set_ylabel('PL2023 - time (s)')
-        ax.set_title(stage)
+        ax.set_title(stage + '--' + time)
         plt.savefig(figfile + '_' + stage + '.pdf')
         plt.close()
 
