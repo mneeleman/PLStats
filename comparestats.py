@@ -93,4 +93,3 @@ def __get_tasklistfromstagesdict__(stage1, stage2, tasklist=None):
         s2 = [y for y in stage2 if stage2[y]['stage_name']['value'] == tasklist]
         tasklist = [(x, y) for x, y in zip(s1, s2)]  # throws error if lengths are different (hif_makeimages)
     return tasklist
-
