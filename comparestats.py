@@ -5,7 +5,9 @@ import matplotlib.pyplot as plt
 
 
 def compare_timestats(inputdir1, inputdir2, tasklist=None, time='task_time', plot=False, **kwargs):
+    print('get stages for input directory: {}'.format(inputdir1))
     stages1 = get_stages(inputdir1)
+    print('get stages for input directory: {}'.format(inputdir2))
     stages2 = get_stages(inputdir2)
     ex_stage1 = stages1[list(stages1.keys())[0]]
     ex_stage2 = stages2[list(stages2.keys())[0]]
