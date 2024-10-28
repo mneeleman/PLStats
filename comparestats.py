@@ -1,7 +1,16 @@
 # this is a place where all of the comparison code lives. This could be
 # comparison between single files or between a list of files.
-from benchmarkstats import get_stages
+from benchmarkstats import get_stages, BenchMarkStats
 import matplotlib.pyplot as plt
+
+
+def compare_benchmarks(input1, input2, parameter_comparison_list=None, **kwargs):
+    bm1, bm2 = __get_input__(input1), __get_input__(input2)
+    if not parameter_comparison_list:
+        pcl = __get_parameter_comparison_list__(bm1, **kwargs)
+    else:
+        pcl = parameter_comparison_list
+    return pcl
 
 
 def compare_timestats(inputdir1, inputdir2, tasklist=None, time='task_time', plot=False, **kwargs):
@@ -95,3 +104,22 @@ def __get_tasklistfromstagesdict__(stage1, stage2, tasklist=None):
         s2 = [y for y in stage2 if stage2[y]['stage_name']['value'] == tasklist]
         tasklist = [(x, y) for x, y in zip(s1, s2)]  # throws error if lengths are different (hif_makeimages)
     return tasklist
+
+
+def __get_input__(inpt):
+    if type(inpt) == str:
+        bm = BenchMarkStats(inpt)
+        if not bm.mouslist:
+            raise IOError('No valid pipeline runs were found in {}'.format(inpt))
+    else:
+        bm = inpt
+    return bm
+
+
+def __get_parameter_comparison_list__(bm, eb_level=False, stage_level=False):
+    pcl = ['proposal_code', 'total_time']
+    if eb_level:
+        pcl.append('flagdata_percentage')
+    if stage_level:
+        pcl.append('qa_score')
+    return bm.get_keywords()

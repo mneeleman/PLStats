@@ -33,7 +33,7 @@ def get_stageinfo(ar, mous, timefile=None):
             stageinfo[key]['task_time'] = {'value': timeinfo['tasks'][key]['seconds'], 'unit': 'second'}
             stageinfo[key]['result_time'] = {'value': timeinfo['results'][key]['seconds'], 'unit': 'second'}
             stageinfo[key]['total_time'] = {'value': timeinfo['total'][key]['seconds'], 'unit': 'second'}
-    mous['stages'] = stageinfo
+    mous['STAGE'] = stageinfo
     return stageinfo
 
 

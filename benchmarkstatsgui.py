@@ -1,7 +1,7 @@
 import os
 import sys
 import glob
-from plstats import PLStats
+from benchmarkstats import BenchMarkStats
 from copy import deepcopy as dc
 import numpy as np
 from matplotlib.backends.qt_compat import QtWidgets, QtCore, QtGui
@@ -18,14 +18,14 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.height = 1000
         # defining the data
         self.directory = directory
-        self.statslist = []
+        self.benchmarkstats = BenchMarkStats(directory)
         self.newstatslist = []
-        self.loadjsonfiles()
-        # create the headers from the first stats file
-        self.mousheaders = self.statslist[0].get_keywords(ignore=['EB', 'SPW', 'TARGET'])
-        self.ebheaders = self.statslist[0].get_keywords(level='EB')
-        self.spwheaders = self.statslist[0].get_keywords(level='SPW')
-        self.targetheaders = self.statslist[0].get_keywords(level='TARGET')
+        self.statslist = []
+        self.reset_benchmarkstats = dc(self.benchmarkstats)
+        self.mousheaders = self.benchmarkstats.get_keywords(ignore=['EB', 'SPW', 'TARGET'])
+        self.ebheaders = self.benchmarkstats.get_keywords(level='EB')
+        self.spwheaders = self.benchmarkstats.get_keywords(level='SPW')
+        self.targetheaders = self.benchmarkstats.get_keywords(level='TARGET')
         self.mousheadsel = []
         self.ebheadsel = []
         self.spwheadsel = []
@@ -58,14 +58,6 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.init_ui()
         # populate the table to its initial state
         self.reset_data()
-
-    def loadjsonfiles(self):
-        files = glob.iglob(self.directory + '/*/working/pipeline_stats*.json', recursive=True)
-        for jsonfile in files:
-            self.statslist.append(PLStats.from_statsfile(jsonfile))
-        if len(self.statslist) == 0:
-            raise IOError('No json stat files found in: {}'.format(self.directory))
-        self.newstatslist = dc(self.statslist)
 
     def init_ui(self):
         self.setWindowTitle(self.directory)
@@ -129,75 +121,69 @@ class ApplicationWindow(QtWidgets.QWidget):
             self.message.setText('Cannot select columns from EB, SPW and IMAGE level at the same time')
             return
         self.mousheadsel = [x.text() for x in self.mousselectlist.selectedItems()]
+        self.tweak_mousheadsel()
         if len(self.ebselectlist.selectedItems()) > 0:
             self.message.setText('Table is showing per EB entries')
             self.ebheadsel = [x.text() for x in self.ebselectlist.selectedItems()]
-            self.update_perxtable('EB', 'n_EB', self.ebheadsel, 'eb_list')
+            self.update_perxtable('EB', self.ebheadsel)
         elif len(self.spwselectlist.selectedItems()) > 0:
             self.message.setText('Table is showing per SPW entries')
             self.spwheadsel = [x.text() for x in self.spwselectlist.selectedItems()]
-            self.update_perxtable('SPW', 'n_spw', self.spwheadsel, 'spw_list')
+            self.update_perxtable('SPW', self.spwheadsel)
         elif len(self.targetselectlist.selectedItems()) > 0:
             self.message.setText('Table is showing per TARGET entries')
             self.targetheadsel = [x.text() for x in self.targetselectlist.selectedItems()]
-            self.update_perxtable('TARGET', 'n_target', self.targetheadsel, 'target_list')
+            self.update_perxtable('TARGET', self.targetheadsel)
         else:
             self.message.setText('Table is showing per MOUS entries')
             self.update_moustable()
 
     def update_moustable(self):
-        self.nrows_label.setText('Number of rows: {}'.format(len(self.newstatslist)))
-        if len(self.newstatslist) == 0:
+        self.nrows_label.setText('Number of rows: {}'.format(len(self.benchmarkstats.mouslist)))
+        if len(self.benchmarkstats.mouslist) == 0:
             model = QtGui.QStandardItemModel()
         else:
-            model = QtGui.QStandardItemModel(len(self.newstatslist), len(self.mousheadsel) + 1)
-            hhlabels = ['PID (str)']
-            for idx1, x in enumerate(self.newstatslist):
-                newitem = QtGui.QStandardItem()
-                newitem.setData(str(x.mousname), QtCore.Qt.DisplayRole)
-                model.setItem(idx1, 0, newitem)
-                for idx2, y in enumerate(self.mousheadsel):
+            model = QtGui.QStandardItemModel(len(self.benchmarkstats.mouslist), len(self.mousheadsel))
+            column_labels = []
+            for idx1, x in enumerate(self.mousheadsel):
+                values = self.benchmarkstats.get_values(x, value_only=True, return_list=True)
+                column_labels.append(str(x) + ' (' + str(type(values[0]))[8:-2] + ')')
+                for idx2, value in enumerate(values):
                     newitem = QtGui.QStandardItem()
-                    try:
-                        value = x.mous[y]['value']
-                    except KeyError:
-                        value = ''
                     newitem.setData(str(value), QtCore.Qt.DisplayRole)
-                    if idx1 == 0:
-                        hhlabels.append(str(y) + ' (' + str(type(value))[8:-2] + ')')
-                    model.setItem(idx1, idx2 + 1, newitem)
-            model.setHorizontalHeaderLabels(hhlabels)
+                    model.setItem(idx2, idx1, newitem)
+            model.setHorizontalHeaderLabels(column_labels)
         self.update_tableview(model)
 
-    def update_perxtable(self, xval, n_x, n_xheadsel, x_list):
-        rowlength = np.sum([x.mous[n_x]['value'] for x in self.newstatslist])
-        columnlength = len(n_xheadsel) + len(self.mousheadsel) + 2
-        firstxdict = self.newstatslist[0].mous[xval][self.newstatslist[0].mous[x_list]['value'][0]]
-        headers = ['PID (str)', xval + ' (str)']
-        header2 = ([x + ' (' + str(type(self.newstatslist[0].mous[x]['value']))[8:-2] + ')' for x in self.mousheadsel] +
-                   [x + ' (' + str(type(firstxdict[x]['value']))[8:-2] + ')' for x in n_xheadsel])
-        headers.extend(header2)
-        model = QtGui.QStandardItemModel(rowlength, columnlength)
-        model.setHorizontalHeaderLabels(headers)
+    def update_perxtable(self, xval, n_xheadsel):
+        rowlength = len(self.benchmarkstats.get_values(xval, return_list=True, flatten=True))
         self.nrows_label.setText('Number of rows: {}'.format(rowlength))
-        rownumber = 0
-        for idx1, x in enumerate(self.newstatslist):
-            for idx2, y in enumerate(x.mous[x_list]['value']):
+        columnlength = len(n_xheadsel) + len(self.mousheadsel) + 1
+        model = QtGui.QStandardItemModel(rowlength, columnlength)
+        column_labels = ['mous_uid (str)', xval + '(str)']
+        values = self.benchmarkstats.get_values(n_xheadsel[0], flatten=True)
+        for idx2, value in enumerate(values):
+            newitem = QtGui.QStandardItem()
+            newitem.setData(value.split('|')[0], QtCore.Qt.DisplayRole)
+            model.setItem(idx2, 0, newitem)
+            newitem = QtGui.QStandardItem()
+            newitem.setData(value.split('|')[2], QtCore.Qt.DisplayRole)
+            model.setItem(idx2, 1, newitem)
+        for idx1, mouskey in enumerate(self.mousheadsel):
+            values = self.benchmarkstats.get_values(mouskey, value_only=True, return_list=True, repeat=xval)
+            column_labels.append(str(mouskey) + ' (' + str(type(values[0]))[8:-2] + ')')
+            for idx2, value in enumerate(values):
                 newitem = QtGui.QStandardItem()
-                newitem.setData(str(x.mousname), QtCore.Qt.DisplayRole)
-                model.setItem(rownumber, 0, newitem)
+                newitem.setData(str(value), QtCore.Qt.DisplayRole)
+                model.setItem(idx2, idx1 + 2, newitem)
+        for idx1, xkey in enumerate(n_xheadsel):
+            values = self.benchmarkstats.get_values(xkey, level=xval, value_only=True, flatten=True, return_list=True)
+            column_labels.append(str(xkey) + ' (' + str(type(values[0]))[8:-2] + ')')
+            for idx2, value in enumerate(values):
                 newitem = QtGui.QStandardItem()
-                newitem.setData(str(y), QtCore.Qt.DisplayRole)
-                model.setItem(rownumber, 1, newitem)
-                for idx3, z1 in enumerate(self.mousheadsel):
-                    newitem = QtGui.QStandardItem()
-                    newitem.setData(str(x.mous[z1]['value']), QtCore.Qt.DisplayRole)
-                    model.setItem(rownumber, idx3 + 2, newitem)
-                for idx4, z2 in enumerate(n_xheadsel):
-                    newitem = QtGui.QStandardItem()
-                    newitem.setData(str(x.mous[xval][y][z2]['value']), QtCore.Qt.DisplayRole)
-                    model.setItem(rownumber, len(self.mousheadsel) + idx4 + 2, newitem)
-                rownumber += 1
+                newitem.setData(str(value), QtCore.Qt.DisplayRole)
+                model.setItem(idx2, idx1 + len(self.mousheadsel) + 2, newitem)
+        model.setHorizontalHeaderLabels(column_labels)
         self.update_tableview(model)
 
     def update_tableview(self, model):
@@ -268,7 +254,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.update_table()
 
     def reset_data(self):
-        self.newstatslist = dc(self.statslist)
+        self.benchmarkstats = self.reset_benchmarkstats
         self.mousheadsel = []
         self.ebheadsel = []
         self.spwheadsel = []
@@ -278,6 +264,12 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.spwselectlist.reset()
         self.targetselectlist.reset()
         self.update_table()
+
+    def tweak_mousheadsel(self):
+        if 'mous_uid' in self.mousheadsel:
+            self.mousheadsel.insert(0, self.mousheadsel.pop(self.mousheadsel.index('mous_uid')))
+        if 'proposal_code' in self.mousheadsel:
+            self.mousheadsel.insert(0, self.mousheadsel.pop(self.mousheadsel.index('proposal_code')))
 
 
 def main():
