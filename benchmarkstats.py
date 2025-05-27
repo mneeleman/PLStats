@@ -31,12 +31,17 @@ def get_stages(inputdir, overwrite=True):
 
 
 class BenchMarkStats:
-    def __init__(self, inputdir, **kwargs):
+    def __init__(self, inputdir, statsfile_only=False, **kwargs):
         self.projects = []
         self.workdirs = []
         self.mouslist = []
         self.mousnames = []
         self.inputdir = inputdir
+        if statsfile_only:
+            files = glob.glob(inputdir + '/*.json')
+            for file in files:
+                self.mouslist.append(PLStats.from_statsfile(file))
+            self.mousnames = [x.mous['mous_uid']['value'] for x in self.mouslist]
         self.__get_projects__()
         self.__get_workingdirs__()
         self.__load_mous__(**kwargs)
@@ -73,7 +78,6 @@ class BenchMarkStats:
         xvals = self.get_values(key, level=level, subkey=subkey, value_only=True, return_list=False, flatten=True)
         values = self.get_values(key, level=level, subkey=subkey, value_only=True, return_list=True, flatten=True)
         sel_vals = [x for x, y in zip(xvals, values) if __comp__(y, operator, value)]
-        print(sel_vals)
         newmousnames = list(np.unique([x.split('|')[0] for x in sel_vals]))
         for mousname in list(self.mousnames):
             if mousname not in newmousnames:
@@ -133,8 +137,8 @@ class BenchMarkStats:
                 raise IOError('Invalid MOUS name or project name, got {}'.format(mous))
         else:
             raise IOError('Invalid MOUS type needs to be string or integer, got {}'.format(type(mous)))
-        self.projects.pop(index)
-        self.workdirs.pop(index)
+        # self.projects.pop(index)
+        # self.workdirs.pop(index)
         self.mouslist.pop(index)
         self.mousnames.pop(index)
 

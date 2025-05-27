@@ -86,8 +86,12 @@ class PLStats:
                     return {'|'.join([self.mous['mous_uid']['value'], key]): list(self.mous[key].keys())}
             else:
                 return {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]}
-        sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
-                    'TARGET': list(self.mous['TARGET'].keys())[0], 'STAGE': list(self.mous['STAGE'].keys())[0]}
+        if 'STAGE' in self.mous.keys():
+            sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
+                        'TARGET': list(self.mous['TARGET'].keys())[0], 'STAGE': list(self.mous['STAGE'].keys())[0]}
+        else:
+            sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
+                        'TARGET': list(self.mous['TARGET'].keys())[0]}
         if key in self.mous[level]:
             return {'|'.join([self.mous['mous_uid']['value'], level, key]): self.mous[level][key]}
         elif key in self.mous[level][sublevel[level]]:

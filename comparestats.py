@@ -10,6 +10,7 @@ def compare_benchmarks(input1, input2, parameter_comparison_list=None, **kwargs)
         pcl = __get_parameter_comparison_list__(bm1, **kwargs)
     else:
         pcl = parameter_comparison_list
+    
     return pcl
 
 

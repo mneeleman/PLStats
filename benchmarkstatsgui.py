@@ -18,7 +18,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.height = 1000
         # defining the data
         self.directory = directory
-        self.benchmarkstats = BenchMarkStats(directory)
+        self.benchmarkstats = BenchMarkStats(directory, statsfile_only=True)
         self.newstatslist = []
         self.statslist = []
         self.reset_benchmarkstats = dc(self.benchmarkstats)
@@ -118,7 +118,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         if ((len(self.ebselectlist.selectedItems()) > 0 and len(self.spwselectlist.selectedItems()) > 0) or
                 (len(self.ebselectlist.selectedItems()) > 0 and len(self.targetselectlist.selectedItems()) > 0) or
                 (len(self.spwselectlist.selectedItems()) > 0 and len(self.targetselectlist.selectedItems()) > 0)):
-            self.message.setText('Cannot select columns from EB, SPW and IMAGE level at the same time')
+            self.message.setText('Cannot select columns from EB, SPW and TARGET level at the same time')
             return
         self.mousheadsel = [x.text() for x in self.mousselectlist.selectedItems()]
         self.tweak_mousheadsel()
@@ -147,10 +147,10 @@ class ApplicationWindow(QtWidgets.QWidget):
             column_labels = []
             for idx1, x in enumerate(self.mousheadsel):
                 values = self.benchmarkstats.get_values(x, value_only=True, return_list=True)
-                column_labels.append(str(x) + ' (' + str(type(values[0]))[8:-2] + ')')
+                column_labels.append(str(x) + ' (' + str(type(values[0][0]))[8:-2] + ')')
                 for idx2, value in enumerate(values):
                     newitem = QtGui.QStandardItem()
-                    newitem.setData(str(value), QtCore.Qt.DisplayRole)
+                    newitem.setData(str(value[0]), QtCore.Qt.DisplayRole)
                     model.setItem(idx2, idx1, newitem)
             model.setHorizontalHeaderLabels(column_labels)
         self.update_tableview(model)
@@ -200,18 +200,27 @@ class ApplicationWindow(QtWidgets.QWidget):
             self.apply_mouscriterion()
         elif self.criterion1.text() in self.ebheaders:
             self.criterion4.setText('found header in EB')
-            self.apply_xciterion('EB', 'n_EB', 'eb_list')
+            self.apply_xcriterion()
         elif self.criterion1.text() in self.spwheaders:
             self.criterion4.setText('found header in SPW')
-            self.apply_xciterion('SPW', 'n_spw', 'spw_list')
+            self.apply_xcriterion()
         elif self.criterion1.text() in self.targetheaders:
             self.criterion4.setText('found header in TARGET')
-            self.apply_xciterion('TARGET', 'n_target', 'target_list')
+            self.apply_xcriterion()
         else:
             self.criterion4.setText('{} Not a valid parameter name'.format(self.criterion1.text()))
             self.criterion1.setText('')
 
     def apply_mouscriterion(self):
+        try:
+            crit = type(self.benchmarkstats.mouslist[0].mous[self.criterion1.text()]['value'])(self.criterion3.text())
+        except ValueError:
+            self.criterion4.setText('Inconsistent type for {}'.format(self.criterion1))
+            return
+        self.benchmarkstats.select(self.criterion1.text(), self.criterion2.currentText(), crit)
+        self.update_table()
+
+    def __apply_mouscriterion(self):
         try:
             crit = type(self.newstatslist[0].mous[self.criterion1.text()]['value'])(self.criterion3.text())
         except ValueError:
@@ -226,7 +235,18 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.newstatslist = criterion[self.criterion2.currentText()]
         self.update_table()
 
-    def apply_xciterion(self, xval, n_x, x_list):
+    def apply_xcriterion(self):
+        try:
+            crit = type(self.benchmarkstats.get_values(self.criterion1.text(),
+                                                       return_list=True, flatten=True)[0])(self.criterion3.text())
+            # crit = float(self.criterion3.text())
+        except ValueError:
+            self.criterion4.setText('Inconsistent type for {}'.format(self.criterion1))
+            return
+        self.benchmarkstats.select(self.criterion1.text(), self.criterion2.currentText(), crit)
+        self.update_table()
+
+    def _apply_xcriterion(self, xval, n_x, x_list):
         try:
             row = self.newstatslist[0].mous
             crit = type(row[xval][row[x_list]['value'][0]][self.criterion1.text()]['value'])(self.criterion3.text())
@@ -254,7 +274,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.update_table()
 
     def reset_data(self):
-        self.benchmarkstats = self.reset_benchmarkstats
+        self.benchmarkstats = dc(self.reset_benchmarkstats)
         self.mousheadsel = []
         self.ebheadsel = []
         self.spwheadsel = []
