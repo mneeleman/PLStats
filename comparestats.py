@@ -53,7 +53,7 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     (partly) hard-coded into this function. The result can also create a csv file of the output (if set).
 
     :param pl1: Either the location of the first working directory to be compared or a PLStats object
-    :param pl2: Either the location of hte Second working directory to be compared or a PLStats object
+    :param pl2: Either the location of the second working directory to be compared or a PLStats object
     :param stagemap: ordered list of comparison between stages. If not set, the code will make a guess that can
     go quite wrong if the imaging stages between the pipeline runs have changed
     :param csvfile: If set, the diff dictionary will be translated into a csvfile, no diff dictionary will be returned
@@ -100,6 +100,8 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
         if target not in pl2.mous['TARGET']:
             continue
         if 'SPW' not in pl1.mous['TARGET'][target]:
+            continue
+        if 'SPW' not in pl2.mous['TARGET'][target]:
             continue
         for spw in pl1.mous['TARGET'][target]['SPW']:
             for k in pl1.mous['TARGET'][target]['SPW'][spw]:
