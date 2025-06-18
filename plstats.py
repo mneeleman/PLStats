@@ -45,7 +45,9 @@ class PLStats:
             self.__mergedict__(self.from_statsfile(self.workdir + '/' + self.statsfile).mous)
         self.arfile = glob.glob(workdir + '/pipeline_aquareport.xml')[0].split('/')[-1]
         if self.arfile and use_arfile:
-            self.timefile = glob.glob(workdir + '/pipeline-*.timetracker.json')[0]
+            tlist = glob.glob(workdir + '/pipeline-*.timetracker.json')
+            tlist.sort()
+            self.timefile = tlist[-1]
             if self.timefile and use_timefile:
                 self.__mergedict__(self.from_aquareport(self.workdir + '/' + self.arfile, timefile=self.timefile).mous)
             elif self.timefile and not use_timefile:
