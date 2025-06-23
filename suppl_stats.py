@@ -107,20 +107,6 @@ def __get_imagelist__(pldir):
     return image_list, '/'.join(imlist[0].split('/')[:-1]) + '/'
 
 
-def __scrape_flagfiles__(pldir):
-    flag_files = glob.glob('{}/working/*.flagtemplate.txt'.format(pldir))
-    if not flag_files:
-        print('__scrape_flagfiles__: no flagging files in working directory')
-    strct = {}
-    for ff in flag_files:
-        eb = ff.split('/')[-1].split('.')[0] + '.ms'
-        if eb not in strct:
-            strct[eb] = [line.strip() for line in open(ff) if not line.strip().startswith('#')]
-        else:
-            strct[eb].extend([line.strip() for line in open(ff) if not line.strip().startswith('#')])
-    return strct
-
-
 def __get_rms__(im, im_pb, im_mask):
     if im.ndim == 2:
         pb_limit = __get_pblimit__(im_pb)
