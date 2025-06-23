@@ -65,7 +65,6 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     :return: diff dictionary or None
     """
     # Load the data
-    print(pl1, pl2)
     pl1 = plstats.PLStats.from_workingdir(pl1) if type(pl1) is str else pl1
     pl2 = plstats.PLStats.from_workingdir(pl2) if type(pl2) is str else pl2
     diff_dict = {'MOUS': {}, 'STAGE': {}, 'TARGET': {}, 'FLUX': {}}

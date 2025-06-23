@@ -4,7 +4,7 @@ import json
 
 def load_aquareport(arfile, timefile=None):
     ar = ElT.parse(open(arfile)).getroot()
-    mous = {}
+    mous = {'TARGET': {}, 'FLUX': {}}
     get_projectinfo(ar, mous)
     get_stageinfo(ar, mous, timefile=timefile)
     get_sensitivityinfo(ar, mous)
@@ -39,7 +39,6 @@ def get_stageinfo(ar, mous, timefile=None):
 
 
 def get_sensitivityinfo(ar, mous):
-    mous['TARGET'] = {}
     for sense in ar.iter('Sensitivity'):
         atb = sense.attrib
         if atb['ImageName'] == 'N/A':  # no useful info in these attributes
@@ -67,7 +66,6 @@ def get_sensitivityinfo(ar, mous):
 
 
 def get_fluxinfo(ar, mous):
-    mous['FLUX'] = {}
     for fm in ar.iter('FluxMeasurement'):
         atb = fm.attrib
         if atb['Field'] not in mous['FLUX']:
