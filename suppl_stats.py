@@ -114,17 +114,17 @@ def __load_images__(image):
     else:
         casa_im = ia().newimagefromfile(image)
         header = casa_im.fitsheader()
-        im = np.squeeze(casa_im.getchunk())
+        im = np.transpose(np.squeeze(casa_im.getchunk()))
         casa_im.done()
         casa_im = ia().newimagefromfile(image + '.pbcor')
-        im_pbcor = np.squeeze(casa_im.getchunk())
+        im_pbcor = np.transpose(np.squeeze(casa_im.getchunk()))
         casa_im.done()
         casa_im = ia().newimagefromfile(image.replace('image', 'pb'))
-        im_pb = np.squeeze(casa_im.getchunk())
+        im_pb = np.transpose(np.squeeze(casa_im.getchunk()))
         casa_im.done()
         if os.path.exists(image.replace('image', 'mask')):
             casa_im = ia().newimagefromfile(image.replace('image', 'mask'))
-            im_mask = np.squeeze(casa_im.getchunk()).astype(bool)
+            im_mask = np.transpose(np.squeeze(casa_im.getchunk()).astype(bool))
             casa_im.done()
         else:
             im_mask = np.zeros_like(im).astype(bool)
@@ -150,14 +150,15 @@ def __get_imagelist__(workingdir, use_product_folder=False):
 def __get_rms__(im, im_pb, im_mask):
     if im.ndim == 2:
         pb_limit = __get_pblimit__(im_pb)
-        im_pbmaskcomp = np.where((~im_mask) & (im_pb < pb_limit), im, np.nan)
+        im_pbmaskcomp = np.where((~im_mask) & (im_pb > pb_limit[0]) & (im_pb < pb_limit[1]), im, np.nan)
         im_rms = [np.sqrt(np.nanmean(np.square(im_pbmaskcomp))).astype(np.float64)]
         im_mad = [np.nanmedian(np.abs(im_pbmaskcomp - np.nanmedian(im_pbmaskcomp))).astype(np.float64)]
     else:
         im_rms, temp_rmsidx, im_mad = [], [], []
         for channel in np.arange(im.shape[-3]):
             pb_limit = __get_pblimit__(im_pb[channel, :])
-            im_pbmaskcomp = np.where(~im_mask[channel, :] & (im_pb[channel, :] < pb_limit), im[channel, :], np.nan)
+            im_pbmaskcomp = np.where(~im_mask[channel, :] & (im_pb[channel, :] > pb_limit[0]) &
+                                     (im_pb[channel, :] < pb_limit[1]), im[channel, :], np.nan)
             im_rms.append(np.sqrt(np.nanmean(np.square(im_pbmaskcomp))).astype(np.float64))
             im_mad.append(np.nanmedian(np.abs(im_pbmaskcomp - np.nanmedian(im_pbmaskcomp))).astype(np.float64))
     return im_rms, im_mad
@@ -175,7 +176,7 @@ def __get_max__(im):
 
 def __get_pblimit__(im_pb):
     if np.min(im_pb) > 1.1 * 0.3:
-        pb_limit = 1.1 * np.min(im_pb)
+        pb_limit = [0.2, 1.1 * np.min(im_pb)]
     else:
-        pb_limit = 0.33
+        pb_limit = [0.2, 0.33]
     return pb_limit
