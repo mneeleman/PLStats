@@ -81,19 +81,19 @@ def scrape_flagfiles(mous, workingdir):
 
 def get_imagestats(mous, image):
     header, im, im_pbcor, im_pb, im_mask = __load_images__(image)
-    if header['OBJECT'].rstrip() not in mous['TARGET']:
-        mous['TARGET'][header['OBJECT']] = {}
+    if header['OBJECT'].strip() not in mous['TARGET']:
+        mous['TARGET'][header['OBJECT'].strip()] = {}
     im_rms, im_mad = __get_rms__(im, im_pb, im_mask)
     im_max = __get_max__(im)
-    if header['SPW'].rstrip() not in mous['TARGET'][header['OBJECT']]:
-        mous['TARGET'][header['OBJECT']][header['SPW']] = {}
-    t_im = mous['TARGET'][header['OBJECT']][header['SPW']]
-    t_im['makeimages_science_' + header['SPECMODE'].rstrip() + '_bmaj'] = {'value': header['BMAJ'] * 3600}
-    t_im['makeimages_science_' + header['SPECMODE'].rstrip() + '_bmin'] = {'value': header['BMIN'] * 3600}
-    t_im['makeimages_science_' + header['SPECMODE'].rstrip() + '_bpa'] = {'value': header['BPA']}
-    t_im['makeimages_science_' + header['SPECMODE'].rstrip() + '_rms'] = {'value': im_rms}
-    t_im['makeimages_science_' + header['SPECMODE'].rstrip() + '_mad'] = {'value': im_mad}
-    t_im['makeimages_science_' + header['SPECMODE'].rstrip() + '_max'] = {'value': im_max}
+    if header['SPW'].strip() not in mous['TARGET'][header['OBJECT'].strip()]:
+        mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()] = {}
+    t_im = mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()]
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_bmaj'] = {'value': float(header['BMAJ']) * 3600}
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_bmin'] = {'value': float(header['BMIN']) * 3600}
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_bpa'] = {'value': float(header['BPA'])}
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_rms'] = {'value': im_rms}
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_mad'] = {'value': im_mad}
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_max'] = {'value': im_max}
 
 
 def __load_images__(image):
