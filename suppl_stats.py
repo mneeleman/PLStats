@@ -21,7 +21,7 @@ def benchmark_make_suppl_statfile(bmdir, outdir='./', overwrite=False):
     projects = list(np.unique([x.split('/')[-2] for x in sorted(glob.glob(bmdir + '/*.*/'))]))
     for pldir in projects:
         print('{0}: {1} of {2}'.format(pldir, projects.index(pldir) + 1, len(projects)))
-        make_suppl_statfile(bmdir + '/' + pldir, overwrite=overwrite, outdir=outdir)
+        make_suppl_statfile(bmdir + '/' + pldir + '/working', overwrite=overwrite, outdir=outdir)
 
 
 def make_suppl_statfile(workingdir, return_mous=False, overwrite=False, outdir=None, use_product_folder=False):
