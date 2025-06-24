@@ -5,36 +5,42 @@ from astropy.io import fits
 import json
 
 
-def benchmark_make_suppl_statfile(bmdir, outdir='./'):
+def benchmark_make_suppl_statfile(bmdir, outdir='./', overwrite=False):
     """
     simple wrapper program to get the supplemental stats file for a whole directory (e.g., benchmark run).
     :param bmdir: main directory that contains the individual pl_runs
     :param outdir: direcoty that contains the output files
+    :param overwrite: if set, it will overwrite the existing outputfile
     :return: None
     """
     projects = list(np.unique([x.split('/')[-2] for x in sorted(glob.glob(bmdir + '/*.*/'))]))
     for pldir in projects:
         print('{0}: {1} of {2}'.format(pldir, projects.index(pldir) + 1, len(projects)))
-        make_suppl_statfile(bmdir + '/' + pldir, jsonfile=outdir + '/' + pldir + '-suppl_stats.json')
+        make_suppl_statfile(bmdir + '/' + pldir, jsonfile=outdir + '/' + pldir + '-suppl_stats.json',
+                            overwrite=overwrite)
 
 
-def make_suppl_statfile(pldir, jsonfile=None, return_mous=False):
+def make_suppl_statfile(pldir, jsonfile=None, return_mous=False, overwrite=False):
     """
     creates a supplemental stats file in JSON form with additional information that is not prenst in the
     current stats file
     :param pldir: String pointing to the pipeline run (not the working directory)
     :param jsonfile: String of the json file that is created. If not set, will use the last part of the pldir string
     :param return_mous: if set, it will return the dictionary in addition to writing it to file
+    :param overwrite: if set, it will overwrite the existing outputfile
     :return: dictionary of the supplemental stats (optional)
     """
+    if jsonfile is None:
+        plrun_name = pldir.split('/')[-1]
+        jsonfile = plrun_name + '-suppl_stats.json'
+    if os.path.exists(jsonfile) and overwrite is False:
+        print('make_suppl_statfile: file: {} already exists will not overwrite it'.format(jsonfile))
+        return
     mous = {'EB': {}, 'TARGET': {}}
     scrape_flagfiles(mous, pldir)
     im_list, image_path = __get_imagelist__(pldir)
     for image in im_list:
         get_imagestats(mous, image_path + image)
-    if jsonfile is None:
-        plrun_name = pldir.split('/')[-1]
-        jsonfile = plrun_name + '-suppl_stats.json'
     with open(jsonfile, 'w') as fp:
         json.dump(mous, fp)
     if return_mous:
@@ -102,6 +108,7 @@ def __get_imagelist__(pldir):
     if not imlist:
         print('__get_imagelist__: no images in {}'.format(pldir + '/S*/G*/M*/products/*_sci*.pbcor.fits'))
         image_list = []
+        return image_list, ''
     else:
         image_list = [x.split('/')[-1] for x in imlist if 'tt1.pbcor.fits' not in x]
     return image_list, '/'.join(imlist[0].split('/')[:-1]) + '/'
