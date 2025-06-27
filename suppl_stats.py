@@ -181,7 +181,7 @@ def __get_max__(im, im_mask, header):
         im_max, im_totalflux = [], []
         for channel in np.arange(im.shape[-3]):
             im_max.append(np.nanmax(im[channel, :]).astype(np.float64))
-            im_totalflux.append(np.nansum(np.where(im_mask, im, np.nan)) / beam_in_pix)
+            im_totalflux.append(np.nansum(np.where(im_mask[channel, :], im[channel, :], np.nan)) / beam_in_pix)
     return im_max, im_totalflux
 
 
