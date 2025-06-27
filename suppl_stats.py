@@ -84,7 +84,8 @@ def get_imagestats(mous, image):
     if header['OBJECT'].strip() not in mous['TARGET']:
         mous['TARGET'][header['OBJECT'].strip()] = {}
     im_rms, im_mad = __get_rms__(im, im_pb, im_mask)
-    im_max = __get_max__(im)
+    im_max, im_totalflux = __get_max__(im, im_mask, header)
+    im_masksize = np.nansum(im_mask)
     if header['SPW'].strip() not in mous['TARGET'][header['OBJECT'].strip()]:
         mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()] = {}
     t_im = mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()]
@@ -94,6 +95,8 @@ def get_imagestats(mous, image):
     t_im['makeimages_science_' + header['SPECMODE'].strip() + '_rms'] = {'value': im_rms}
     t_im['makeimages_science_' + header['SPECMODE'].strip() + '_mad'] = {'value': im_mad}
     t_im['makeimages_science_' + header['SPECMODE'].strip() + '_max'] = {'value': im_max}
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_totalflux'] = {'value': im_totalflux}
+    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_masksize'] = {'value': im_masksize}
 
 
 def __load_images__(image):
@@ -164,14 +167,22 @@ def __get_rms__(im, im_pb, im_mask):
     return im_rms, im_mad
 
 
-def __get_max__(im):
+def __get_max__(im, im_mask, header):
+    try:
+        beam_in_pix = np.abs(2 * np.pi * header['BMAJ'] * header['BMIN'] / (8 * np.log(2)) /
+                             (header['CDELT'][0] * header['CDELT'][1]))
+    except KeyError:
+        beam_in_pix = np.abs(2 * np.pi * header['BMAJ'] * header['BMIN'] / (8 * np.log(2)) /
+                             (header['CDELT1'] * header['CDELT2']))
     if im.ndim == 2:
         im_max = [np.nanmax(im).astype(np.float64)]
+        im_totalflux = [np.nansum(np.where(im_mask, im, np.nan)) / beam_in_pix]
     else:
-        im_max, temp_maxidx = [], []
+        im_max, im_totalflux = [], []
         for channel in np.arange(im.shape[-3]):
             im_max.append(np.nanmax(im[channel, :]).astype(np.float64))
-    return im_max
+            im_totalflux.append(np.nansum(np.where(im_mask, im, np.nan)) / beam_in_pix)
+    return im_max, im_totalflux
 
 
 def __get_pblimit__(im_pb):
