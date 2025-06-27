@@ -84,8 +84,7 @@ def get_imagestats(mous, image):
     if header['OBJECT'].strip() not in mous['TARGET']:
         mous['TARGET'][header['OBJECT'].strip()] = {}
     im_rms, im_mad = __get_rms__(im, im_pb, im_mask)
-    im_max, im_totalflux = __get_max__(im, im_mask, header)
-    im_masksize = np.nansum(im_mask)
+    im_max, im_totalflux, im_masksize = __get_max__(im, im_mask, header)
     if header['SPW'].strip() not in mous['TARGET'][header['OBJECT'].strip()]:
         mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()] = {}
     t_im = mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()]
@@ -176,13 +175,16 @@ def __get_max__(im, im_mask, header):
                              (header['CDELT1'] * header['CDELT2']))
     if im.ndim == 2:
         im_max = [np.nanmax(im).astype(np.float64)]
-        im_totalflux = [np.nansum(np.where(im_mask, im, np.nan)) / beam_in_pix]
+        im_totalflux = [(np.nansum(np.where(im_mask, im, np.nan)) / beam_in_pix).astype(np.float64)]
+        im_masksize = int(np.nansum(im_mask))
     else:
-        im_max, im_totalflux = [], []
+        im_max, im_totalflux, im_masksize = [], [], []
         for channel in np.arange(im.shape[-3]):
             im_max.append(np.nanmax(im[channel, :]).astype(np.float64))
-            im_totalflux.append(np.nansum(np.where(im_mask[channel, :], im[channel, :], np.nan)) / beam_in_pix)
-    return im_max, im_totalflux
+            im_totalflux.append((np.nansum(np.where(im_mask[channel, :], im[channel, :], np.nan)) /
+                                 beam_in_pix).astype(np.float64))
+            im_masksize = int(np.nansum(im_mask[channel, :]))
+    return im_max, im_totalflux, im_masksize
 
 
 def __get_pblimit__(im_pb):
