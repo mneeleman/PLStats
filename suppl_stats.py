@@ -1,7 +1,10 @@
 import glob
 import numpy as np
 import os
-from astropy.io import fits
+try:
+    from astropy.io import fits
+except ModuleNotFoundError:
+    print('suppl_stats: astropy not found, cannot load fits images')
 import json
 try:
     a = ia.open()
