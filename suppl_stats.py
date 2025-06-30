@@ -47,7 +47,7 @@ def make_suppl_statfile(workingdir, return_mous=False, overwrite=False, outdir=N
         mousname = glob.glob(workingdir + '/pipeline_stats_*.json')[0].split('/')[-1][15:-5]
         timestamp = glob.glob(workingdir + '/pipeline-*T*.timetracker.json')[-1].split('/')[-1].split('.')[0][9:]
         jsonfile = 'pipeline-suppl_stats-' + mousname + '-' + timestamp + '.json'
-    except NameError:
+    except IndexError:
         jsonfile = 'pipeline-suppl_stats.json'
     if os.path.exists(outdir + jsonfile) and overwrite is False:
         print('make_suppl_statfile: file: {} already exists will not overwrite it'.format(outdir + jsonfile))
@@ -91,14 +91,23 @@ def get_imagestats(mous, image):
     if header['SPW'].strip() not in mous['TARGET'][header['OBJECT'].strip()]:
         mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()] = {}
     t_im = mous['TARGET'][header['OBJECT'].strip()][header['SPW'].strip()]
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_bmaj'] = {'value': float(header['BMAJ']) * 3600}
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_bmin'] = {'value': float(header['BMIN']) * 3600}
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_bpa'] = {'value': float(header['BPA'])}
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_rms'] = {'value': im_rms}
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_mad'] = {'value': im_mad}
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_max'] = {'value': im_max}
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_totalflux'] = {'value': im_totalflux}
-    t_im['makeimages_science_' + header['SPECMODE'].strip() + '_masksize'] = {'value': im_masksize}
+    if 'DATATYPE' not in header:
+        imroot = 'makeimages_science_' + header['SPECMODE'].strip()
+    else:
+        if 'SELFCAL' in header['DATATYPE']:
+            imroot = 'makeimages_science_' + header['SPECMODE'].strip() + '_selfcal'
+        else:
+            imroot = 'makeimages_science_' + header['SPECMODE'].strip()
+    if imroot + '_bmaj' in t_im:
+        print('get_imagestats: {} already exists in dictionary; overwriting existing values.'.format(imroot))
+    t_im[imroot + '_bmaj'] = {'value': float(header['BMAJ']) * 3600}
+    t_im[imroot + '_bmin'] = {'value': float(header['BMIN']) * 3600}
+    t_im[imroot + '_bpa'] = {'value': float(header['BPA'])}
+    t_im[imroot + '_rms'] = {'value': im_rms}
+    t_im[imroot + '_mad'] = {'value': im_mad}
+    t_im[imroot + '_max'] = {'value': im_max}
+    t_im[imroot + '_totalflux'] = {'value': im_totalflux}
+    t_im[imroot + '_masksize'] = {'value': im_masksize}
 
 
 def __load_images__(image):
@@ -140,7 +149,7 @@ def __get_imagelist__(workingdir, use_product_folder=False):
     if use_product_folder:
         imlist = glob.glob(workingdir + '../products/*_sci*.pbcor.fits')
         if not imlist:
-            print('__get_imagelist__: no images in {}'.format(workingdir + '../products/*_sci*.pbcor.fits'))
+            print('__get_imagelist__: no images in {}'.format(workingdir + '../products'))
             image_list = []
             return image_list, ''
         else:
@@ -149,6 +158,8 @@ def __get_imagelist__(workingdir, use_product_folder=False):
     else:
         imlist = glob.glob(workingdir + '*_sci*.image')
         image_list = [x.split('/')[-1] for x in imlist]
+        if not imlist:
+            print('__get_imagelist__: no images in {}'.format(workingdir))
         return image_list, workingdir
 
 
@@ -196,3 +207,8 @@ def __get_pblimit__(im_pb):
     else:
         pb_limit = [0.2, 0.33]
     return pb_limit
+
+
+if __name__ == '__main__':
+    wdir = os.getcwd()
+    make_suppl_statfile(wdir, outdir=None)
