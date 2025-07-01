@@ -197,7 +197,7 @@ def __get_max__(im, im_mask, header):
             im_max.append(np.nanmax(im[channel, :]).astype(np.float64))
             im_totalflux.append((np.nansum(np.where(im_mask[channel, :], im[channel, :], np.nan)) /
                                  beam_in_pix).astype(np.float64))
-            im_masksize = int(np.nansum(im_mask[channel, :]))
+            im_masksize.append(int(np.nansum(im_mask[channel, :])))
     return im_max, im_totalflux, im_masksize
 
 
