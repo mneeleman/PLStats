@@ -7,10 +7,10 @@ except ModuleNotFoundError:
     print('suppl_stats: astropy not found, cannot load fits images')
 import json
 try:
-    a = ia.open()
-    a.done()
+    ia.isopen
 except NameError:
-    from casatools import image as ia
+    from casatools import image as ima
+    ia = ima()
 
 
 def benchmark_make_suppl_statfile(bmdir, outdir='./', overwrite=False):
@@ -126,18 +126,18 @@ def __load_images__(image):
             im_mask = np.zeros_like(im_pbcor).astype(bool)
         im = im_pbcor * im_pb
     else:
-        casa_im = ia().newimagefromfile(image)
+        casa_im = ia.newimagefromfile(image)
         header = casa_im.fitsheader()
         im = np.transpose(np.squeeze(casa_im.getchunk()))
         casa_im.done()
-        casa_im = ia().newimagefromfile(image + '.pbcor')
+        casa_im = ia.newimagefromfile(image + '.pbcor')
         im_pbcor = np.transpose(np.squeeze(casa_im.getchunk()))
         casa_im.done()
-        casa_im = ia().newimagefromfile(image.replace('image', 'pb'))
+        casa_im = ia.newimagefromfile(image.replace('image', 'pb'))
         im_pb = np.transpose(np.squeeze(casa_im.getchunk()))
         casa_im.done()
         if os.path.exists(image.replace('image', 'mask')):
-            casa_im = ia().newimagefromfile(image.replace('image', 'mask'))
+            casa_im = ia.newimagefromfile(image.replace('image', 'mask'))
             im_mask = np.transpose(np.squeeze(casa_im.getchunk()).astype(bool))
             casa_im.done()
         else:
