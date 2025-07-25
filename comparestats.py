@@ -6,6 +6,7 @@ import csv
 import plstats
 import numpy as np
 import glob
+from matplotlib.backends.backend_pdf import PdfPages
 
 
 def compare_benchmarks(input1, input2, parameter_comparison_list=None, **kwargs):
@@ -17,7 +18,7 @@ def compare_benchmarks(input1, input2, parameter_comparison_list=None, **kwargs)
     return pcl
 
 
-def compare_pldirs(pldir1, pldir2, **kwargs):
+def compare_pldirs(pldir1, pldir2, csvfile=None, plot_timecomparison=True, plot_timefile='timeplot.pdf', **kwargs):
     """
     Function to compare all the aquareports within the given pipeline directories
 
@@ -27,10 +28,15 @@ def compare_pldirs(pldir1, pldir2, **kwargs):
     compare_aquareports can take in
     :param pldir1: first directory with pipeline runs
     :param pldir2: second directory with pipeline runs
-    :return: A CSV file will be written
+    :param csvfile: the name of the CSV file in which to write the output
+    :param plot_timecomparison: makes simple plots of the timing differences between plruns
+    :param plot_timefile: name of the timeplot
+    :return: if csvfile is set, a CSV file will be written. Also, will return the diff_dict
     """
     projects = np.unique([x.split('/')[-2].split('_')[0] for x in sorted(glob.glob(pldir1+'/*.*/'))])
+    diff = []
     for proj in projects:
+        print('running comparison script on project: {}'.format(proj))
         plist = glob.glob('{0}/{1}_*/S*/G*/M*/working'.format(pldir1, proj))
         if len(plist) == 0:
             full_dir = glob.glob('{0}/{1}'.format(pldir1, proj))[0].split('/')[-1]
@@ -44,7 +50,13 @@ def compare_pldirs(pldir1, pldir2, **kwargs):
             continue
         else:
             pl2 = plist[-1]
-        compare_plstats(pl1, pl2, **kwargs)
+        diff.append(compare_plstats(pl1, pl2, csvfile=csvfile, **kwargs))
+    if plot_timecomparison:
+        __plot_timecomp__(diff, plot_timefile.replace('.pdf', '_tasktime.pdf'), mode='task_time', pldir1=pldir1,
+                          pldir2=pldir2)
+        __plot_timecomp__(diff, plot_timefile.replace('.pdf', '_resulttime.pdf'), mode='result_time', pldir1=pldir1,
+                          pldir2=pldir2)
+    return diff
 
 
 def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_only=False, limit=1E-5,
@@ -76,9 +88,9 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
         pcl.insert(0, 'proposal_code')
     for key in pcl:
         if key not in pl2.mous:
-            print('key: {} not preent in pl2 {}'.format(key, pl1.mous['proposal_code']))
+            print('key: {} not present in pl2 {}'.format(key, pl1.mous['proposal_code']))
         if 'value' not in pl1.mous[key]:
-            print('value not preent in key: {}'.format(key))
+            print('value not present in key: {}'.format(key))
             continue
         val1 = pl1.mous[key]['value'] if key in pl1.mous.keys() else '---'
         val2 = pl2.mous[key]['value'] if key in pl2.mous.keys() else '---'
@@ -148,8 +160,7 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
                     subs = ['']
                 for sub in subs:
                     __convdiff2csv__(diff_dict[item], csvfile, sub=sub, comment=comm[item] + ':' + sub)
-    else:
-        return diff_dict
+    return diff_dict
 
 
 def compare_timestats(inputdir1, inputdir2, tasklist=None, time='task_time', plot=False, **kwargs):
@@ -335,3 +346,51 @@ def __add2diff__(diff_dict, key1, key2, val1, val2, limit, diff_only):
             del diff_dict[key1][key2]
     else:
         return
+
+
+def __plot_timecomp__(diff, plot_timefile, mode='task_time', pldir1='pl1', pldir2='pl2'):
+    stages = [x for x in diff[0]['STAGE'].keys() if mode in x]
+    stagenames = [':'.join(x.split(':')[0:2]) for x in diff[0]['STAGE'].keys() if mode in x]
+    n_stages = len(stages)
+    n_pages = int(np.ceil(n_stages / 12))
+    with PdfPages(plot_timefile) as pdf:
+        idx = 0
+        ds = []
+        for page in range(n_pages):
+            fig, axs = plt.subplots(3, 4, figsize=(10, 8))
+            plt.subplots_adjust(left=0.08, bottom=0.08, right=0.98, top=0.96, wspace=0.2, hspace=0.25)
+            fig.text(0.52, 0.02, pldir1 + ' Time (s)', ha='center')
+            fig.text(0.02, 0.52, pldir2 + ' Time (s)', rotation=90, va='center')
+            for ax in axs.reshape(-1):
+                c_stage = stages[idx]
+                c_diff = [x['STAGE'][c_stage] for x in diff if c_stage in x['STAGE'].keys()]
+                x, y = [x['PL1'] for x in c_diff], [y['PL2'] for y in c_diff]
+                maxv, minv = np.max(x + y), np.min(x + y)
+                ax.plot(x, y, 'o', color='steelblue')
+                ax.plot([minv, maxv], [minv, maxv], ':', color='black')
+                ax.set_yscale('log')
+                ax.set_xscale('log')
+                ax.set_title(stagenames[idx], fontsize=10)
+                idx += 1
+                ds.append(([ty / tx for tx, ty in zip(x, y)],
+                           [ty / tx for tx, ty in zip(x, y) if np.abs(tx - ty) > 60],
+                           np.median(x)))
+            pdf.savefig()
+            plt.close()
+        for page in range(n_pages):
+            fig, ax = plt.subplots(1, 1, figsize=(16, 7))
+            plt.subplots_adjust(left=0.06, right=0.98, bottom=0.20, top=0.96)
+            ax.violinplot([x[0] for x in ds[int(page * 12): int((page + 1) * 12)]], showmedians=True, side='low')
+            ax.violinplot([x[1] if x[1] != [] else [1] for x in ds[int(page * 12): int((page + 1) * 12)]],
+                          showmedians=True, side='high')
+            ax.legend(handles=[plt.Rectangle((0, 0), 1, 1, fc='steelblue'), plt.Rectangle((0, 0), 1, 1, fc='orange')],
+                      labels=['All data', 'Data where difference is >60s'], loc='upper right')
+            ax.axhline(1, ls='--', color='black')
+            ax.set_xticks([y + 1 for y in range(12)], labels=stagenames[int(page * 12): int((page + 1) * 12)],
+                          rotation=60, ha='right')
+            ax.set_ylabel('Ratio of time {0} / {1}'.format(pldir2.split('/')[-1], pldir1.split('/')[-1]))
+        # ax.set_title('Violin plot per task for {}'.format(time))
+            ax.set_ylim(0, 4)
+            pdf.savefig()
+            plt.close()
+    return ds
