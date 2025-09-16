@@ -18,20 +18,23 @@ def compare_benchmarks(input1, input2, parameter_comparison_list=None, **kwargs)
     return pcl
 
 
-def compare_pldirs(pldir1, pldir2, csvfile=None, plot_timecomparison=True, plot_timefile='timeplot.pdf', **kwargs):
+def compare_pldirs(pldir1, pldir2, csvfile=None, plot_timecomparison=True, plot_timefile='timeplot.pdf',
+                   return_diff=True, **kwargs):
     """
     Function to compare all the aquareports within the given pipeline directories
 
     The function assumes that the aquareport are located within the working directory of the directory with the
     general structure of project/SOUS*/GOUS*/MOUS*/working. It will take the list af projects in the first directory
-    and check for existence in the second directory. This function can take in all the keywords that c
-    compare_aquareports can take in
+    and check for existence in the second directory. This function can take in all the keywords that
+    compare_plstats can take in
     :param pldir1: first directory with pipeline runs
     :param pldir2: second directory with pipeline runs
     :param csvfile: the name of the CSV file in which to write the output
     :param plot_timecomparison: makes simple plots of the timing differences between plruns
     :param plot_timefile: name of the timeplot
-    :return: if csvfile is set, a CSV file will be written. Also, will return the diff_dict
+    :param return_diff: will return the difference dictionary
+    :return: if csvfile is set, a CSV file will be written. Also, will return the diff dictionary 
+             if return_diff is set
     """
     projects = np.unique([x.split('/')[-2].split('_')[0] for x in sorted(glob.glob(pldir1+'/*.*/'))])
     diff = []
@@ -56,11 +59,12 @@ def compare_pldirs(pldir1, pldir2, csvfile=None, plot_timecomparison=True, plot_
                           pldir2=pldir2)
         __plot_timecomp__(diff, plot_timefile.replace('.pdf', '_resulttime.pdf'), mode='result_time', pldir1=pldir1,
                           pldir2=pldir2)
-    return diff
+    if return_diff:
+        return diff
 
 
 def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_only=False, limit=1E-5,
-                    compact=False):
+                    compact=False, ignore_time=False):
     """ Creates a diff dictionary with the differences between the parameters. The parameters that are checked are
     (partly) hard-coded into this function. The result can also create a csv file of the output (if set).
 
@@ -74,6 +78,7 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     :param limit: Set the percentage limit in order to include the keyword in the output. For instnance a limit of
     0.05 means that any absolute change greater than 5 percent will be included in the diff_only output
     :param compact: If set, a compact version will be returned with the information on a single line.
+    :param ignore_time: If set, will ignore any per-stage timing information in the comparison 
     :return: diff dictionary or None
     """
     # Load the data
@@ -145,6 +150,8 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
             for key in list(diff_dict.keys()):
                 if 'task_time' in key or 'result_time' in key:
                     del diff_dict[key]
+                if 'total_time' in key and ignore_time:
+                    del diff_dict[key]
             __convdiff2csv__(diff_dict, csvfile, comment=None)
         else:
             comm = {'MOUS': 'Mous level properties', 'STAGE': 'Pipeline Stage',
@@ -153,7 +160,9 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
                 selection = diff_dict.keys()
             for item in selection:
                 if item in ['STAGE']:
-                    subs = ['qa_score', 'total_time']
+                    subs = ['qa_score']
+                    if not ignore_time:
+                        subs.append('total_time')
                 elif item in ['FLUX', 'TARGET']:
                     subs = list(set([x.split(':')[0] for x in diff_dict[item]]))
                 else:
