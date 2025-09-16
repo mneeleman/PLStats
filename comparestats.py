@@ -77,7 +77,7 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     :param diff_only: If set, only the differences that fall above the limit set by the keyword limit will be shown
     :param limit: Set the percentage limit in order to include the keyword in the output. For instnance a limit of
     0.05 means that any absolute change greater than 5 percent will be included in the diff_only output
-    :param compact: If set, a compact version will be returned with the information on a single line.
+    :param compact: If set, a compact version will be returned with the information on a single line
     :param ignore_time: If set, will ignore any per-stage timing information in the comparison 
     :return: diff dictionary or None
     """
