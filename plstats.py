@@ -141,26 +141,26 @@ class PLStats:
                     if 'makeimages_science_cube_' + par in self.mous['TARGET'][target][x]:
                         cubemed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cube_' +
                                                                               par]['value'])
-                        cube.append(cubemed.astype(float))
+                        cube.append(cubemed.astype(float).item())
                     elif 'makeimages_science_cube_selfcal_' + par in self.mous['TARGET'][target][x]:
                         cubemed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cube_selfcal_' +
                                                                               par]['value'])
-                        cube.append(cubemed.astype(float))
+                        cube.append(cubemed.astype(float).item())
                     if 'makeimages_science_mfs_' + par in self.mous['TARGET'][target][x]:
                         mfsmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_mfs_' + par]['value'])
-                        mfs.append(mfsmed.astype(float))
+                        mfs.append(mfsmed.astype(float).item())
                     elif 'makeimages_science_mfs_selfcal_' + par in self.mous['TARGET'][target][x]:
                         mfsmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_mfs_selfcal_' +
                                                                              par]['value'])
-                        mfs.append(mfsmed.astype(float))
+                        mfs.append(mfsmed.astype(float).item())
                     if 'makeimages_science_cont_' + par in self.mous['TARGET'][target][x]:
                         contmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cont_' +
                                                                               par]['value'])
-                        cont.append(contmed.astype(float))
+                        cont.append(contmed.astype(float).item())
                     elif 'makeimages_science_cont_selfcal_' + par in self.mous['TARGET'][target][x]:
                         contmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cont_selfcal_' +
                                                                               par]['value'])
-                        cont.append(contmed.astype(float))
+                        cont.append(contmed.astype(float).item())
 
             #print(len(vals))
             for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
