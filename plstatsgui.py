@@ -9,7 +9,7 @@ from matplotlib.backends.qt_compat import QtWidgets, QtCore, QtGui
 
 class ApplicationWindow(QtWidgets.QWidget):
 
-    def __init__(self, directory):
+    def __init__(self, directory, dir_type='Benchmark'):
         # overall image parameters of gui window
         super().__init__()
         self.left = 20
@@ -20,9 +20,14 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.directory = directory
         self.statslist = []
         self.newstatslist = []
-        self.loadjsonfiles()
+        if dir_type == 'Benchmark':
+            self.load_benchmark()
+        elif dir_type == 'cfdir':
+            self.load_cf()
+        else:
+            raise IOError('{} is not a valid directory type.'.format(dir_type))
         # create the headers from the first stats file
-        self.mousheaders = self.statslist[0].get_keywords(ignore=['EB', 'SPW', 'TARGET'])
+        self.mousheaders = self.statslist[0].get_keywords(ignore=['EB', 'SPW', 'TARGET', 'FLUX', 'STAGE'])
         self.ebheaders = self.statslist[0].get_keywords(level='EB')
         self.spwheaders = self.statslist[0].get_keywords(level='SPW')
         self.targetheaders = self.statslist[0].get_keywords(level='TARGET')
@@ -59,10 +64,20 @@ class ApplicationWindow(QtWidgets.QWidget):
         # populate the table to its initial state
         self.reset_data()
 
-    def loadjsonfiles(self):
-        files = glob.iglob(self.directory + '/*/working/pipeline_stats*.json', recursive=True)
-        for jsonfile in files:
-            self.statslist.append(PLStats.from_statsfile(jsonfile))
+    def load_cf(self):
+        uid_names = np.unique([x.split('___')[-1].split('-')[0] + '-'
+                               for x in glob.glob(self.directory + '/pipeline_stats*')])
+        for uid_name in uid_names:
+            self.statslist.append(PLStats.from_uidname(uid_name, searchdir=self.directory))
+        if len(self.statslist) == 0:
+            raise IOError('No json stat files found in: {}'.format(self.directory))
+        self.newstatslist = dc(self.statslist)
+
+    def load_benchmark(self):
+        dirs = glob.glob(self.directory + '/*/')
+        for cdir in dirs:
+            if os.path.exists(cdir + 'working'):
+                self.statslist.append(PLStats.from_workingdir(cdir + 'working'))
         if len(self.statslist) == 0:
             raise IOError('No json stat files found in: {}'.format(self.directory))
         self.newstatslist = dc(self.statslist)
@@ -153,19 +168,14 @@ class ApplicationWindow(QtWidgets.QWidget):
             model = QtGui.QStandardItemModel(len(self.newstatslist), len(self.mousheadsel) + 1)
             hhlabels = ['PID (str)']
             for idx1, x in enumerate(self.newstatslist):
-                newitem = QtGui.QStandardItem()
-                newitem.setData(str(x.mousname), QtCore.Qt.DisplayRole)
-                model.setItem(idx1, 0, newitem)
+                __set_data__(model, x.mous['mous_uid'], idx1, 0)
                 for idx2, y in enumerate(self.mousheadsel):
-                    newitem = QtGui.QStandardItem()
-                    try:
-                        value = x.mous[y]['value']
-                    except KeyError:
-                        value = ''
-                    newitem.setData(str(value), QtCore.Qt.DisplayRole)
+                    __set_data__(model, x.mous[y], idx1, idx2 + 1)
                     if idx1 == 0:
-                        hhlabels.append(str(y) + ' (' + str(type(value))[8:-2] + ')')
-                    model.setItem(idx1, idx2 + 1, newitem)
+                        if 'value' in x.mous[y]:
+                            hhlabels.append(str(y) + ' (' + str(type(x.mous[y]['value']))[8:-2] + ')')
+                        else:
+                            hhlabels.append(str(y) + ' (' + str(type(x.mous[y]))[8:-2] + ')')
             model.setHorizontalHeaderLabels(hhlabels)
         self.update_tableview(model)
 
@@ -183,20 +193,12 @@ class ApplicationWindow(QtWidgets.QWidget):
         rownumber = 0
         for idx1, x in enumerate(self.newstatslist):
             for idx2, y in enumerate(x.mous[x_list]['value']):
-                newitem = QtGui.QStandardItem()
-                newitem.setData(str(x.mousname), QtCore.Qt.DisplayRole)
-                model.setItem(rownumber, 0, newitem)
-                newitem = QtGui.QStandardItem()
-                newitem.setData(str(y), QtCore.Qt.DisplayRole)
-                model.setItem(rownumber, 1, newitem)
+                __set_data__(model, x.mous['mous_uid'], rownumber, 0)
+                __set_data__(model, y, rownumber, 1)
                 for idx3, z1 in enumerate(self.mousheadsel):
-                    newitem = QtGui.QStandardItem()
-                    newitem.setData(str(x.mous[z1]['value']), QtCore.Qt.DisplayRole)
-                    model.setItem(rownumber, idx3 + 2, newitem)
+                    __set_data__(model, x.mous[z1], rownumber, idx3 + 2)
                 for idx4, z2 in enumerate(n_xheadsel):
-                    newitem = QtGui.QStandardItem()
-                    newitem.setData(str(x.mous[xval][y][z2]['value']), QtCore.Qt.DisplayRole)
-                    model.setItem(rownumber, len(self.mousheadsel) + idx4 + 2, newitem)
+                    __set_data__(model, x.mous[xval][y][z2], rownumber, len(self.mousheadsel) + idx4 + 2)
                 rownumber += 1
         self.update_tableview(model)
 
@@ -206,6 +208,9 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.tableview.setModel(proxy)
         self.tableview.resizeColumnsToContents()
         self.tableview.horizontalHeader().setStretchLastSection(True)
+        for x in range(model.columnCount()):
+            if self.tableview.columnWidth(x) > 300:
+                self.tableview.setColumnWidth(x, 300)
         self.tableview.setSortingEnabled(True)
 
     def apply_criterion(self):
@@ -280,14 +285,31 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.update_table()
 
 
+def __set_data__(model, obj, row, col):
+    newitem = QtGui.QStandardItem()
+    if type(obj) == str:
+        newitem.setData(obj, QtCore.Qt.DisplayRole)
+    elif type(obj) == dict:
+        if 'value' in obj.keys():
+            newitem.setData(str(obj['value']), QtCore.Qt.DisplayRole)
+        else:
+            newitem.setData(str(obj), QtCore.Qt.DisplayRole)
+    else:
+        raise IOError('{}-type is not defined in __set_data__'.format(type(obj)))
+    model.setItem(row, col, newitem)
+
+
 def main():
+    qapp = QtWidgets.QApplication(['1'])
     if len(sys.argv) == 1:
         print('cfgui: taking current directory as input')
-        qapp = QtWidgets.QApplication(['1'])
         appw = ApplicationWindow(os.getcwd())
-    else:
-        qapp = QtWidgets.QApplication(['1'])
+    elif len(sys.argv) == 2:
         appw = ApplicationWindow(sys.argv[1])
+    elif len(sys.argv) == 3:
+        appw = ApplicationWindow(sys.argv[1], dir_type=sys.argv[2])
+    else:
+        raise IOError('Not a valid number or arguments')
     appw.show()
     sys.exit(qapp.exec())
 

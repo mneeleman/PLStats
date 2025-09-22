@@ -4,6 +4,7 @@ import json
 from aquareport import load_aquareport
 from tables import load_tables
 import glob
+import numpy as np
 
 
 class PLStats:
@@ -17,7 +18,7 @@ class PLStats:
         if len(mouslist) != 1:
             raise ValueError('There should be a unique MOUS in each json file, but found: {}'.format(mouslist))
         self.mous = tempjson[mouslist[0]]
-        self.mousname = mouslist[0]
+        self.mous['mous_uid'] = {'value': mouslist[0]}
         self.mous['eb_list'] = {'value': list(self.get_keywords(level='EB', return_sublevel=False))}
         self.mous['spw_list'] = {'value': list(self.get_keywords(level='SPW', return_sublevel=False))}
         return self
@@ -57,6 +58,21 @@ class PLStats:
             self.__mergedict__(self.from_tablelist([self.workdir + '/' + x for x in self.tablelist]).mous)
         return self
 
+    @classmethod
+    def from_uidname(cls, uid_name, searchdir='.', index=0):
+        self = cls()
+        uid_list = glob.glob(searchdir + '/pipeline_stats_*.json')
+        all_uid = [x for x in uid_list if uid_name in x]
+        self.statsfile = all_uid[index]
+        self.__mergedict__(self.from_statsfile(self.statsfile).mous)
+        uid_supplist = glob.glob(searchdir + '/pipeline-suppl_stats_*.json')
+        suppl_file = self.statsfile.replace('pipeline', 'pipeline-suppl')
+        self.suppl_statsfile = suppl_file if suppl_file in uid_supplist else ''
+        if self.suppl_statsfile != '':
+            self.__mergedict__(json.load(open(self.suppl_statsfile, 'r')))
+            self.analyze_stats()
+        return self
+
     def get_keywords(self, level='MOUS', return_sublevel=True, ignore=None):
         if level == 'MOUS':
             keywords = list(self.mous.keys())
@@ -64,14 +80,19 @@ class PLStats:
             if return_sublevel:
                 sublevel = list(self.mous[level].keys())[0]
                 keywords = list(self.mous[level][sublevel].keys())
+                for key in keywords.copy():  # remove teritiary dictionaries (which are often mous-specific)
+                    if 'value' not in self.mous[level][sublevel][key]:
+                        keywords.pop(keywords.index(key))
             else:
                 keywords = list(self.mous[level].keys())
         if ignore:
             if type(ignore) == list:
                 for x in ignore:
-                    keywords.pop(keywords.index(x))
+                    if x in keywords:
+                        keywords.pop(keywords.index(x))
             else:
-                keywords.pop(keywords.index(ignore))
+                if ignore in keywords:
+                    keywords.pop(keywords.index(ignore))
         return keywords
 
     def get_values(self, key, level=None, subkey=None, value_only=False):
@@ -107,6 +128,48 @@ class PLStats:
             else:
                 return {'|'.join([self.mous['mous_uid']['value'], level, x, key]): self.mous[level][x][key]
                         for x in self.mous[level]}
+
+    def analyze_stats(self):
+        for eb in self.mous['EB']:
+            n_manualflags = len(self.mous['EB'][eb]['flagdata_manual_flags']['value'])
+            self.mous['EB'][eb]['n_manualflags'] = {'value': n_manualflags}
+        for target in self.mous['TARGET']:
+            cubes, mfss, conts = [[], [], [], [], []], [[], [], [], [], []], [[], [], [], [], []]
+            pars = ['bmaj', 'bmin', 'bpa', 'rms', 'max']
+            for x in self.mous['TARGET'][target]:
+                for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
+                    if 'makeimages_science_cube_' + par in self.mous['TARGET'][target][x]:
+                        cubemed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cube_' +
+                                                                              par]['value'])
+                        cube.append(cubemed.astype(float))
+                    elif 'makeimages_science_cube_selfcal_' + par in self.mous['TARGET'][target][x]:
+                        cubemed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cube_selfcal_' +
+                                                                              par]['value'])
+                        cube.append(cubemed.astype(float))
+                    if 'makeimages_science_mfs_' + par in self.mous['TARGET'][target][x]:
+                        mfsmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_mfs_' + par]['value'])
+                        mfs.append(mfsmed.astype(float))
+                    elif 'makeimages_science_mfs_selfcal_' + par in self.mous['TARGET'][target][x]:
+                        mfsmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_mfs_selfcal_' +
+                                                                             par]['value'])
+                        mfs.append(mfsmed.astype(float))
+                    if 'makeimages_science_cont_' + par in self.mous['TARGET'][target][x]:
+                        contmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cont_' +
+                                                                              par]['value'])
+                        cont.append(contmed.astype(float))
+                    elif 'makeimages_science_cont_selfcal_' + par in self.mous['TARGET'][target][x]:
+                        contmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cont_selfcal_' +
+                                                                              par]['value'])
+                        cont.append(contmed.astype(float))
+
+            #print(len(vals))
+            for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
+                self.mous['TARGET'][target]['median_cube_' + par] = {'value': np.nanmedian(cube)}
+                self.mous['TARGET'][target]['median_mfs_' + par] = {'value': np.nanmedian(mfs)}
+                self.mous['TARGET'][target]['median_cont_' + par] = {'value': np.nanmedian(cont)}
+            self.mous['TARGET'][target]['median_cube_sn'] = {'value': np.nanmedian(cubes[4]) / np.nanmedian(cubes[3])}
+            self.mous['TARGET'][target]['median_mfs_sn'] = {'value': np.nanmedian(mfss[4]) / np.nanmedian(mfss[3])}
+            self.mous['TARGET'][target]['median_cont_sn'] = {'value': np.nanmedian(conts[4]) / np.nanmedian(conts[3])}
 
     def __init__(self):
         self.mous = {}
