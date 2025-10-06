@@ -161,8 +161,6 @@ class PLStats:
                         contmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cont_selfcal_' +
                                                                               par]['value'])
                         cont.append(contmed.astype(float).item())
-
-            #print(len(vals))
             for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
                 self.mous['TARGET'][target]['median_cube_' + par] = {'value': np.nanmedian(cube)}
                 self.mous['TARGET'][target]['median_mfs_' + par] = {'value': np.nanmedian(mfs)}
