@@ -137,14 +137,14 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     # output
     if csvfile is not None:
         if compact:
-            diff_dict = {**diff_dict['MOUS'], **diff_dict['STAGE'], **diff_dict['FLUX'], **diff_dict['TARGET']}
+            diff_dict_c = {**diff_dict['MOUS'], **diff_dict['STAGE'], **diff_dict['FLUX'], **diff_dict['TARGET']}
             # clean up
-            for key in list(diff_dict.keys()):
+            for key in list(diff_dict_c.keys()):
                 if 'task_time' in key or 'result_time' in key:
-                    del diff_dict[key]
+                    del diff_dict_c[key]
                 if 'total_time' in key and ignore_time:
-                    del diff_dict[key]
-            __convdiff2csv__(diff_dict, csvfile, comment=None)
+                    del diff_dict_c[key]
+            __convdiff2csv__(diff_dict_c, csvfile, comment=None)
         else:
             comm = {'MOUS': 'Mous level properties', 'STAGE': 'Pipeline Stage',
                     'FLUX': 'Flux measurements per spw for calibrator', 'TARGET': 'Imaging characteristics for target'}
