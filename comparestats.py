@@ -8,8 +8,8 @@ import glob
 from matplotlib.backends.backend_pdf import PdfPages
 
 
-def compare_pldirs(pldir1, pldir2, csvfile=None, plot_timecomparison=True, plot_timefile='timeplot.pdf',
-                   return_diff=True, **kwargs):
+def compare_benchmarks(pldir1, pldir2, csvfile=None, plot_timecomparison=True, plot_timefile='timeplot.pdf',
+                       return_diff=True, **kwargs):
     """
     Function to compare all the aquareports within the given pipeline directories
 
@@ -43,6 +43,8 @@ def compare_pldirs(pldir1, pldir2, csvfile=None, plot_timecomparison=True, plot_
             continue
         else:
             pl2 = plist[-1]
+        pl1 = plstats.PLStats.from_workingdir(pl1)
+        pl2 = plstats.PLStats.from_workingdir(pl2)
         diff.append(compare_plstats(pl1, pl2, csvfile=csvfile, **kwargs))
     if plot_timecomparison:
         __plot_timecomp__(diff, plot_timefile.replace('.pdf', '_tasktime.pdf'), mode='task_time', pldir1=pldir1,
@@ -58,8 +60,8 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     """ Creates a diff dictionary with the differences between the parameters. The parameters that are checked are
     (partly) hard-coded into this function. The result can also create a csv file of the output (if set).
 
-    :param pl1: Either the location of the first working directory to be compared or a PLStats object
-    :param pl2: Either the location of the second working directory to be compared or a PLStats object
+    :param pl1: The first PLStats object
+    :param pl2: The second PLStats object that will be compared to the first.
     :param stagemap: ordered list of comparison between stages. If not set, the code will make a guess that can
     go quite wrong if the imaging stages between the pipeline runs have changed
     :param csvfile: If set, the diff dictionary will be translated into a csvfile, no diff dictionary will be returned
@@ -71,9 +73,6 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     :param ignore_time: If set, will ignore any per-stage timing information in the comparison 
     :return: diff dictionary or None
     """
-    # Load the data
-    pl1 = plstats.PLStats.from_workingdir(pl1) if type(pl1) is str else pl1
-    pl2 = plstats.PLStats.from_workingdir(pl2) if type(pl2) is str else pl2
     diff_dict = {'MOUS': {}, 'STAGE': {}, 'TARGET': {}, 'FLUX': {}}
     # get MOUS level parameters
     pcl = __get_parameter_comparison_list__(pl1, level='MOUS')
@@ -96,13 +95,15 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     for stage in stagemap:
         for k in ['qa_score', 'task_time', 'result_time', 'total_time']:
             key = stage[0] + ':' + pl1.mous['STAGE'][stage[0]]['stage_name']['value'] + ':' + k
-            val1 = pl1.mous['STAGE'][stage[0]][k]['value']
-            val1 = float(val1) if val1 != 'None' else -1.
-            val2 = pl2.mous['STAGE'][stage[1]][k]['value']
-            val2 = float(val2) if val2 != 'None' else -1.
-            __add2diff__(diff_dict, 'STAGE', key, val1, val2, limit, diff_only)
+            if k in pl1.mous['STAGE'][stage[0]]:
+                val1 = pl1.mous['STAGE'][stage[0]][k]['value']
+                val1 = float(val1) if val1 != 'None' else -1.
+                val2 = pl2.mous['STAGE'][stage[1]][k]['value']
+                val2 = float(val2) if val2 != 'None' else -1.
+                __add2diff__(diff_dict, 'STAGE', key, val1, val2, limit, diff_only)
     # get sensitivity info
-    for target in pl1.mous['TARGET']:
+    target_list = [x for x in pl1.mous['TARGET']] if 'TARGET' in pl1.mous else []
+    for target in target_list:
         if target not in pl2.mous['TARGET']:
             continue
         if 'SPW' not in pl1.mous['TARGET'][target]:
@@ -119,7 +120,8 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
                 val2 = float(pl2.mous['TARGET'][target]['SPW'][spw][k]['value'])
                 __add2diff__(diff_dict, 'TARGET', key, val1, val2, limit, diff_only)
     # get flux info
-    for flux in pl1.mous['FLUX']:
+    flux_list = [x for x in pl1.mous['FLUX']] if 'FLUX' in pl1.mous else []
+    for flux in flux_list:
         if flux not in pl2.mous['FLUX']:
             continue
         for spw in pl1.mous['FLUX'][flux]['SPW']:
