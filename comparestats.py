@@ -139,7 +139,7 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
         if compact:
             diff_dict_c = {**diff_dict['MOUS'], **diff_dict['STAGE'], **diff_dict['FLUX'], **diff_dict['TARGET']}
             if selection is None:
-                selection = list(diff_dict.keys())
+                selection = list(diff_dict_c.keys())
             # clean up
             for key in selection:
                 print(key)
