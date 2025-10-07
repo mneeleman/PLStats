@@ -142,7 +142,7 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
             for key in list(diff_dict_c.keys()):
                 if 'task_time' in key or 'result_time' in key:
                     del diff_dict_c[key]
-                if 'total_time' in key and ignore_time:
+                if ('total_time' in key) and ignore_time:
                     del diff_dict_c[key]
             __convdiff2csv__(diff_dict_c, csvfile, comment=None)
         else:
