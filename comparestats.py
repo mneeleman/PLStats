@@ -166,6 +166,33 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     return diff_dict
 
 
+def compare_consequentiality(pl1, pl2, do_cube=True, do_mfs=True, do_cont=True):
+    """
+    Code to check for consequentiality between two different pipeline runs.
+
+    The code checks different products, if present. The standard approach is to checke all products that are the
+    same, but this can be specific by setting different keywords to false. The general check is to check the rms
+    between the pipeline runs and the maximum value as a function of rms. plots can be generated, if requested.
+    :param pl1:
+    :param pl2:
+    :param do_cube:
+    :param do_mfs:
+    :param do_cont:
+    :return:
+    """
+    if do_cube:
+        pass
+    if do_mfs:
+        for target in pl1.mous['TARGET']:
+            for spw in pl1.mous['TARGET'][target]:
+                continue
+        pass
+    if do_cont:
+        pass
+
+    pass
+
+
 def __get_parameter_comparison_list__(pl, **kwargs):
     pcl = pl.get_keywords(**kwargs)
     [pcl.pop(pcl.index(x)) for x in ['EB', 'SPW', 'TARGET', 'STAGE', 'spw_list', 'eb_list', 'target_list', 'FLUX']]
