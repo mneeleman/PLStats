@@ -180,17 +180,27 @@ def compare_consequentiality(pl1, pl2, do_cube=True, do_mfs=True, do_cont=True):
     :param do_cont:
     :return:
     """
-    if do_cube:
-        pass
-    if do_mfs:
-        for target in pl1.mous['TARGET']:
-            for spw in pl1.mous['TARGET'][target]:
+    diff_dict = {'TARGET': {}}
+    for target in pl1.mous['TARGET']:
+        diff_dict['TARGET'][target] = {}
+        if target not in pl2.mous['TARGET']:
+            print('{target} does not exist in pl2')
+            continue
+        for spw in pl1.mous['TARGET'][target]:
+            if spw not in pl2.mous['TARGET'][target]:
+                print('{spw} does not exist in pl2 target {target}')
                 continue
-        pass
-    if do_cont:
-        pass
-
-    pass
+            if do_mfs:
+                rms1 = pl1.mous['TARGET'][target][spw]['makeimages_science_mfs_rms']['value']
+                rms2 = pl2.mous['TARGET'][target][spw]['makeimages_science_mfs_rms']['value']
+                key = target + ':' + spw + ':mfs_rms'
+                __add2diff__(diff_dict, 'TARGET', key, rms1, rms2, 1E-5, False)
+                continue
+            if do_cube:
+                pass
+            if do_cont:
+                pass
+    return diff_dict
 
 
 def __get_parameter_comparison_list__(pl, **kwargs):
