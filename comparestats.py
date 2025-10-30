@@ -116,7 +116,7 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
     of the pipeline structure by setting the appropriate keywords. This is done for speed, because any parameter that
     is not present in both pipelines will be ignored and not compared.
     """
-    diff_dict = {'MOUS': {}, 'STAGE': {}, 'TARGET': {}, 'FLUX': {}}
+    diff_dict = {'MOUS': {'CF': False}, 'STAGE': {'CF': False}, 'TARGET': {'CF': False}, 'FLUX': {'CF': False}}
     # get MOUS level parameters
     if do_mous:
         pcl = __get_parameter_comparison_list__(pl1, level='MOUS')
@@ -132,7 +132,7 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                 continue
             val1 = pl1.mous[key]['value'] if key in pl1.mous.keys() else '---'
             val2 = pl2.mous[key]['value'] if key in pl2.mous.keys() else '---'
-            __add2diff__(diff_dict, 'MOUS', key, val1, val2, limit, diff_only)
+            __add2diff__(diff_dict, 'MOUS', key, val1, val2, limit, diff_only=diff_only)
     # get stage info (QA scores and timing)
     if do_stage:
         if stagemap is None:
@@ -145,7 +145,7 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                     val1 = float(val1) if val1 != 'None' else -1.
                     val2 = pl2.mous['STAGE'][stage[1]][k]['value']
                     val2 = float(val2) if val2 != 'None' else -1.
-                    __add2diff__(diff_dict, 'STAGE', key, val1, val2, limit, diff_only)
+                    __add2diff__(diff_dict, 'STAGE', key, val1, val2, limit, diff_only=diff_only)
     # get sensitivity info
     if do_target:
         target_list = [x for x in pl1.mous['TARGET']] if 'TARGET' in pl1.mous else []
@@ -162,7 +162,7 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                         key = target + ':' + spw + ':' + new_k_name
                         val1 = float(pl1.mous['TARGET'][target]['SPW'][spw][k]['value'])
                         val2 = float(pl2.mous['TARGET'][target]['SPW'][spw][k]['value'])
-                        __add2diff__(diff_dict, 'TARGET', key, val1, val2, limit, diff_only)
+                        __add2diff__(diff_dict, 'TARGET', key, val1, val2, limit, diff_only=diff_only)
             for spw in pl1.mous['TARGET'][target]:
                 if 'value' in pl1.mous['TARGET'][target][spw].keys() or spw == 'SPW':
                     continue
@@ -172,17 +172,11 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                     __add_imstats__(pl1, pl2, target, spw, 'mfs', diff_dict)
                     __add_imstats__(pl1, pl2, target, spw, 'mfs_selfcal', diff_dict)
                 if do_cube:
-                    __get_values__(pl1.mous['TARGET'][target][spw], pl2.mous['TARGET'][target][spw],
-                                   'makeimages_science_cube_rms', target + ':' + spw + ':cube_rms', diff_dict)
-                    __get_values__(pl1.mous['TARGET'][target][spw], pl2.mous['TARGET'][target][spw],
-                                   'makeimages_science_cube_selfcal_rms', target + ':' + spw + ':cube_selfcal_rms',
-                                   diff_dict)
+                    __add_imstats__(pl1, pl2, target, spw, 'cube', diff_dict)
+                    __add_imstats__(pl1, pl2, target, spw, 'cube_selfcal', diff_dict)
                 if do_cont:
-                    __get_values__(pl1.mous['TARGET'][target][spw], pl2.mous['TARGET'][target][spw],
-                                   'makeimages_science_cont_rms', target + ':' + spw + ':cont_rms', diff_dict)
-                    __get_values__(pl1.mous['TARGET'][target][spw], pl2.mous['TARGET'][target][spw],
-                                   'makeimages_science_cont_selfcal_rms', target + ':' + spw + ':cont_selfcal_rms',
-                                   diff_dict)
+                    __add_imstats__(pl1, pl2, target, spw, 'cont', diff_dict)
+                    __add_imstats__(pl1, pl2, target, spw, 'cont_selfcal', diff_dict)
     # get flux info
     if do_flux:
         flux_list = [x for x in pl1.mous['FLUX']] if 'FLUX' in pl1.mous else []
@@ -198,7 +192,7 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                     val2 = (float(pl2.mous['FLUX'][flux]['SPW'][spw][asdm]['fitted_value'])
                             if pl2.mous['FLUX'][flux]['SPW'][spw][asdm]['fitted_value'] != -1.0 else
                             float(pl2.mous['FLUX'][flux]['SPW'][spw][asdm]['value']))
-                    __add2diff__(diff_dict, 'FLUX', key, val1, val2, limit, diff_only)
+                    __add2diff__(diff_dict, 'FLUX', key, val1, val2, limit, diff_only=diff_only)
     return diff_dict
 
 
@@ -227,24 +221,33 @@ def __get_stagemap__(pl1, pl2):
     return tasklist
 
 
-def __get_values__(pl1_tgt_spw, pl2_tgt_spw, val, key, diff_dict):
-    rms1 = (pl1_tgt_spw[val]['value'] if val in pl1_tgt_spw else '---')
-    rms2 = (pl2_tgt_spw[val]['value'] if val in pl2_tgt_spw else '---')
-    if rms1 == '---' and rms2 == '---':
-        return
-    __add2diff__(diff_dict, 'TARGET', key, rms1, rms2, 1E-5, False)
-
-
-def __add_imstats__(pl1, pl2, target, spw, imtype, diff_dict):
-    __get_values__(pl1.mous['TARGET'][target][spw], pl2.mous['TARGET'][target][spw],
-                   'makeimages_science_' + imtype + '_rms', target + ':' + spw + ':' + imtype + '_rms', diff_dict)
-    __get_values__(pl1.mous['TARGET'][target][spw], pl2.mous['TARGET'][target][spw],
-                   'makeimages_science_' + imtype + '_max', target + ':' + spw + ':' + imtype + '_max', diff_dict)
-    sn1 = [x / y for x, y in zip(pl1.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_max']['value'],
-                                 pl1.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_rms']['value'])]
-    sn2 = [x / y for x, y in zip(pl2.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_max']['value'],
-                                 pl2.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_rms']['value'])]
-    __add2diff__(diff_dict, 'TARGET', target + ':' + spw + ':' + imtype + '_snr', sn1, sn2, 1E-5, False)
+def __add_imstats__(pl1, pl2, target, spw, imtype, diff_dict, limit=None, diff_only=False):
+    if limit is None:
+        limit = [-1E-3, 5E-2, 5E-2]
+    rms1 = (pl1.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_rms']['value']
+            if 'makeimages_science_' + imtype + '_rms' in pl1.mous['TARGET'][target][spw] else '---')
+    rms2 = (pl2.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_rms']['value']
+            if 'makeimages_science_' + imtype + '_rms' in pl2.mous['TARGET'][target][spw] else '---')
+    max1 = (pl1.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_max']['value']
+            if 'makeimages_science_' + imtype + '_max' in pl1.mous['TARGET'][target][spw] else '---')
+    max2 = (pl2.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_max']['value']
+            if 'makeimages_science_' + imtype + '_max' in pl2.mous['TARGET'][target][spw] else '---')
+    __add2diff__(diff_dict, 'TARGET', target + ':' + spw + ':' + imtype + '_rms', rms1, rms2, limit[0],
+                 diff_only=diff_only, less_than=True)
+    __add2diff__(diff_dict, 'TARGET', target + ':' + spw + ':' + imtype + '_max', max1, max2, limit[1],
+                 diff_only=diff_only, less_than=False)
+    if rms1 != '---' and max1 != '---' and rms2 != '---' and max2 != '---':
+        sn1 = [x / y for x, y in zip(max1, rms1)]
+        sn2 = [x / y for x, y in zip(max2, rms2)]
+        __add2diff__(diff_dict, 'TARGET', target + ':' + spw + ':' + imtype + '_snr', sn1, sn2, limit[2],
+                     diff_only=diff_only, less_than=False)
+        # adjust the SNR and MAX 'CF' based on the S/N > 10 criteria
+        sncut = [True if x > 10 else False
+                 for x in diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_snr']['PL1']]
+        diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_max']['CF'] = list(
+            np.logical_and(diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_max']['CF'], sncut))
+        diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_snr']['CF'] = list(
+            np.logical_and(diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_snr']['CF'], sncut))
 
 
 def __calc_diff__(val1, val2):
@@ -295,19 +298,42 @@ def __convdiff2csv__(diff, csvfile, sub='', comment=None):
         csvwriter.writerow([])
 
 
-def __add2diff__(diff_dict, key1, key2, val1, val2, limit, diff_only):
+def __add2diff__(diff_dict, key1, key2, val1, val2, limit, diff_only=False, ignore_str=True, less_than=True):
+    if val1 == '---' and val2 == '---':
+        return
     diff, pdiff = __calc_diff__(val1, val2), __calc_pdiff__(val1, val2)
-    diff_dict[key1][key2] = {'PL1': val1, 'PL2': val2, 'diff': diff, 'pdiff': pdiff}
+    diff_dict[key1][key2] = {'PL1': val1, 'PL2': val2, 'diff': diff, 'pdiff': pdiff, 'CF': False}
     if type(diff) == str:
-        if diff_only and diff == '---' and key2 != 'proposal_code':
-            del diff_dict[key1][key2]
-    elif type(diff) == float:
-        if diff_only and abs(pdiff) < limit:
-            del diff_dict[key1][key2]
-    elif type(diff) == int:
-        if diff_only and abs(pdiff) < limit:
-            del diff_dict[key1][key2]
-    else:
+        if diff == '---':
+            if diff_only and key2 != 'proposal_code':
+                del diff_dict[key1][key2]
+        else:
+            if not ignore_str:
+                diff_dict[key1][key2]['CF'] = True
+    elif type(diff) == float or type(diff) == int:
+        if (pdiff > limit and less_than) or (pdiff < limit and not less_than):
+            if diff_only:
+                del diff_dict[key1][key2]
+        else:
+            diff_dict[key1][key2]['CF'] = True
+    elif type(diff) == list:
+        if type(diff[0]) == str:
+            if not ignore_str:
+                cf_list = [False if x == '---' else True for x in pdiff]
+            else:
+                cf_list = [False for _x in pdiff]
+        else:
+            if less_than:
+                cf_list = [False if x > limit else True for x in pdiff]
+            else:
+                cf_list = [False if x < limit else True for x in pdiff]
+        if not np.any(cf_list):
+            if diff_only:
+                del diff_dict[key1][key2]
+            else:
+                diff_dict[key1][key2]['CF'] = cf_list
+        else:
+            diff_dict[key1][key2]['CF'] = cf_list
         return
 
 

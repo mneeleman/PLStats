@@ -2,7 +2,7 @@
 # ideally the code would take info only from stats file, but for know allow other inputs
 import json
 from aquareport import load_aquareport
-from tables import load_tables
+# from tables import load_tables
 import glob
 import numpy as np
 
@@ -30,12 +30,12 @@ class PLStats:
         self.mous = load_aquareport(arfile, timefile=timefile)
         return self
 
-    @classmethod
-    def from_tablelist(cls, tablelist):
-        self = cls()
-        self.tablelist = tablelist
-        self.mous = load_tables(tablelist)
-        return self
+    # @classmethod
+    # def from_tablelist(cls, tablelist):
+    #     self = cls()
+    #     self.tablelist = tablelist
+    #     self.mous = load_tables(tablelist)
+    #     return self
 
     @classmethod
     def from_workingdir(cls, workdir, use_statsfile=True, use_arfile=True, use_tables=False, use_timefile=True):
@@ -55,14 +55,15 @@ class PLStats:
                 self.__mergedict__(self.from_aquareport(self.workdir + '/' + self.arfile).mous)
         self.tablelist = [x.split('/')[-1] for x in glob.glob(workdir + '/*.tbl')]
         if self.tablelist and use_tables:
-            self.__mergedict__(self.from_tablelist([self.workdir + '/' + x for x in self.tablelist]).mous)
+            pass
+        #     self.__mergedict__(self.from_tablelist([self.workdir + '/' + x for x in self.tablelist]).mous)
         return self
 
     @classmethod
     def from_uidname(cls, uid_name, searchdir='.', index=0):
         self = cls()
         uid_list = glob.glob(searchdir + '/pipeline_stats_*.json')
-        all_uid = [x for x in uid_list if uid_name in x]
+        all_uid = sorted([x for x in uid_list if uid_name in x])
         self.statsfile = all_uid[index]
         self.__mergedict__(self.from_statsfile(self.statsfile).mous)
         uid_supplist = glob.glob(searchdir + '/pipeline-suppl_stats_*.json')
