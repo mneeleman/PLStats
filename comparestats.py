@@ -53,6 +53,8 @@ def compare_benchmarks(pldir1, pldir2, csvfile=None, plot_timecomparison=True, p
                           pldir2=pldir2)
     if return_diff:
         return diff
+    else:
+        return []
 
 
 def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_only=False, limit=1E-5,

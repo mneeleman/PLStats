@@ -66,6 +66,12 @@ class PLStats:
         all_uid = sorted([x for x in uid_list if uid_name in x])
         self.statsfile = all_uid[index]
         self.__mergedict__(self.from_statsfile(self.statsfile).mous)
+        uid_supplist = glob.glob(searchdir + '/pipeline_aquareport-*.xml')
+        ar_file = self.statsfile.replace('pipeline_stats_', 'pipeline_aquareport-')
+        ar_file = ar_file.replace('json', 'xml')
+        self.arfile = ar_file if ar_file in uid_supplist else ''
+        if self.arfile != '':
+            self.__mergedict__(self.from_aquareport(self.arfile).mous)
         uid_supplist = glob.glob(searchdir + '/pipeline-suppl_stats_*.json')
         suppl_file = self.statsfile.replace('pipeline', 'pipeline-suppl')
         self.suppl_statsfile = suppl_file if suppl_file in uid_supplist else ''
