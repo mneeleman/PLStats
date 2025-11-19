@@ -137,45 +137,21 @@ class PLStats:
                         for x in self.mous[level]}
 
     def analyze_stats(self):
+        self.mous['manual_flags'] = {'value': []}
         for eb in self.mous['EB']:
             n_manualflags = len(self.mous['EB'][eb]['flagdata_manual_flags']['value'])
             self.mous['EB'][eb]['n_manualflags'] = {'value': n_manualflags}
+            self.mous['manual_flags']['value'].extend(self.mous['EB'][eb]['flagdata_manual_flags']['value'])
         for target in self.mous['TARGET']:
-            cubes, mfss, conts = [[], [], [], [], []], [[], [], [], [], []], [[], [], [], [], []]
-            pars = ['bmaj', 'bmin', 'bpa', 'rms', 'max']
             for spw in self.mous['TARGET'][target]:
-                for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
-                    if 'makeimages_science_cube_' + par in self.mous['TARGET'][target][spw]:
-                        cubemed = np.nanmedian(self.mous['TARGET'][target][spw]['makeimages_science_cube_' +
-                                                                                par]['value'])
-                        cube.append(cubemed.astype(float).item())
-                    elif 'makeimages_science_cube_selfcal_' + par in self.mous['TARGET'][target][spw]:
-                        cubemed = np.nanmedian(self.mous['TARGET'][target][spw]['makeimages_science_cube_selfcal_' +
-                                                                                par]['value'])
-                        cube.append(cubemed.astype(float).item())
-                    if 'makeimages_science_mfs_' + par in self.mous['TARGET'][target][spw]:
-                        mfsmed = np.nanmedian(self.mous['TARGET'][target][spw]['makeimages_science_mfs_' +
-                                                                               par]['value'])
-                        mfs.append(mfsmed.astype(float).item())
-                    elif 'makeimages_science_mfs_selfcal_' + par in self.mous['TARGET'][target][spw]:
-                        mfsmed = np.nanmedian(self.mous['TARGET'][target][spw]['makeimages_science_mfs_selfcal_' +
-                                                                               par]['value'])
-                        mfs.append(mfsmed.astype(float).item())
-                    if 'makeimages_science_cont_' + par in self.mous['TARGET'][target][spw]:
-                        contmed = np.nanmedian(self.mous['TARGET'][target][spw]['makeimages_science_cont_' +
-                                                                                par]['value'])
-                        cont.append(contmed.astype(float).item())
-                    elif 'makeimages_science_cont_selfcal_' + par in self.mous['TARGET'][target][spw]:
-                        contmed = np.nanmedian(self.mous['TARGET'][target][spw]['makeimages_science_cont_selfcal_' +
-                                                                                par]['value'])
-                        cont.append(contmed.astype(float).item())
-            for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
-                self.mous['TARGET'][target]['median_cube_' + par] = {'value': np.nanmedian(cube)}
-                self.mous['TARGET'][target]['median_mfs_' + par] = {'value': np.nanmedian(mfs)}
-                self.mous['TARGET'][target]['median_cont_' + par] = {'value': np.nanmedian(cont)}
-            self.mous['TARGET'][target]['median_cube_sn'] = {'value': np.nanmedian(cubes[4]) / np.nanmedian(cubes[3])}
-            self.mous['TARGET'][target]['median_mfs_sn'] = {'value': np.nanmedian(mfss[4]) / np.nanmedian(mfss[3])}
-            self.mous['TARGET'][target]['median_cont_sn'] = {'value': np.nanmedian(conts[4]) / np.nanmedian(conts[3])}
+                n_images = len([x for x in self.mous['TARGET'][target][spw].keys() if 'rms' in x])
+                self.mous['TARGET'][target][spw]['n_images'] = {'value': n_images}
+            n_images = np.sum([self.mous['TARGET'][target][spw]['n_images']['value']
+                               for spw in self.mous['TARGET'][target]])
+            self.mous['TARGET'][target]['n_images'] = {'value': n_images}
+        n_images = np.sum([self.mous['TARGET'][target]['n_images']['value']
+                           for target in self.mous['TARGET']])
+        self.mous['n_images'] = {'value': n_images}
 
     def __init__(self):
         self.mous = {}

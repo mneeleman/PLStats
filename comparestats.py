@@ -109,8 +109,8 @@ def compare_plstats(pl1, pl2, csvfile=None, stagemap=None, selection=None, diff_
     return diff_dict
 
 
-def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_cube=True, do_mfs=True, do_cont=True,
-                     do_flux=True, diff_only=False, limit=1E-5, stagemap=None):
+def create_diff_dict(pl1, pl2, do_mous=True, do_eb=True, do_stage=True, do_target=True, do_cube=True, do_mfs=True,
+                     do_cont=True, do_flux=True, diff_only=False, limit=1E-5, stagemap=None):
     """
     Code to create the difference structure.
 
@@ -118,7 +118,7 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
     of the pipeline structure by setting the appropriate keywords. This is done for speed, because any parameter that
     is not present in both pipelines will be ignored and not compared.
     """
-    diff_dict = {'MOUS': {'CF': False}, 'STAGE': {'CF': False}, 'TARGET': {'CF': False}, 'FLUX': {'CF': False}}
+    diff_dict = {'MOUS': {}, 'EB': {}, 'STAGE': {}, 'TARGET': {}, 'FLUX': {}, 'SPW': {}}
     # get MOUS level parameters
     if do_mous:
         pcl = __get_parameter_comparison_list__(pl1, level='MOUS')
@@ -127,14 +127,23 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
             pcl.remove('proposal_code')
             pcl.insert(0, 'proposal_code')
         for key in pcl:
-            if key not in pl2.mous:
-                print('key: {} not present in pl2 {}'.format(key, pl1.mous['proposal_code']))
+            if key not in pl2.get_keywords('MOUS'):
+                print('key: {} not present in pl2'.format(key))
             if 'value' not in pl1.mous[key]:
                 print('value not present in key: {}'.format(key))
                 continue
             val1 = pl1.mous[key]['value'] if key in pl1.mous.keys() else '---'
             val2 = pl2.mous[key]['value'] if key in pl2.mous.keys() else '---'
-            __add2diff__(diff_dict, 'MOUS', key, val1, val2, limit, diff_only=diff_only)
+            __add2diff__(diff_dict, ['MOUS', key], val1, val2, limit, diff_only=diff_only)
+    # per eb keywords
+    if do_eb:
+        for eb in pl1.mous['EB']:
+            pcl_eb = pl1.mous['EB'][eb].keys()
+            for key in pcl_eb:
+                val1 = pl1.mous['EB'][eb][key]['value'] if key in pl1.mous['EB'][eb].keys() else '---'
+                val2 = pl2.mous['EB'][eb][key]['value'] if key in pl2.mous['EB'][eb].keys() else '---'
+                __add2diff__(diff_dict, ['EB', eb, key], val1, val2, limit, diff_only=diff_only,
+                             less_than=False)
     # get stage info (QA scores and timing)
     if do_stage:
         if stagemap is None:
@@ -147,29 +156,34 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                     val1 = float(val1) if val1 != 'None' else -1.
                     val2 = pl2.mous['STAGE'][stage[1]][k]['value']
                     val2 = float(val2) if val2 != 'None' else -1.
-                    __add2diff__(diff_dict, 'STAGE', key, val1, val2, limit, diff_only=diff_only)
+                    __add2diff__(diff_dict, ['STAGE', key], val1, val2, limit, diff_only=diff_only)
     # get sensitivity info
     if do_target:
         target_list = [x for x in pl1.mous['TARGET']] if 'TARGET' in pl1.mous else []
         for target in target_list:
             if target not in pl2.mous['TARGET']:
                 continue
+            diff_dict['TARGET'][target] = {'SPW': {}}
             # code to read in the aquareport sensitivties, should eventually be removed or integrated with below code
-            if 'SPW' in pl1.mous['TARGET'][target] and 'SPW' in pl2.mous['TARGET'][target]:
-                for spw in pl1.mous['TARGET'][target]['SPW']:
-                    for k in pl1.mous['TARGET'][target]['SPW'][spw]:
-                        if k not in pl2.mous['TARGET'][target]['SPW'][spw]:
-                            continue
-                        new_k_name = ':'.join(k.split('_')[2:])
-                        key = target + ':' + spw + ':' + new_k_name
-                        val1 = float(pl1.mous['TARGET'][target]['SPW'][spw][k]['value'])
-                        val2 = float(pl2.mous['TARGET'][target]['SPW'][spw][k]['value'])
-                        __add2diff__(diff_dict, 'TARGET', key, val1, val2, limit, diff_only=diff_only)
+            # this wil actually likely crash with current structure.
+            #if 'SPW' in pl1.mous['TARGET'][target] and 'SPW' in pl2.mous['TARGET'][target]:
+            #    for spw in pl1.mous['TARGET'][target]['SPW']:
+            #        if spw in ['n_images']:
+            #            continue
+            #        for k in pl1.mous['TARGET'][target]['SPW'][spw]:
+            #            if k not in pl2.mous['TARGET'][target]['SPW'][spw]:
+            #                continue
+            #            new_k_name = ':'.join(k.split('_')[2:])
+            #            key = target + ':' + spw + ':' + new_k_name
+            #            val1 = float(pl1.mous['TARGET'][target]['SPW'][spw][k]['value'])
+            #            val2 = float(pl2.mous['TARGET'][target]['SPW'][spw][k]['value'])
+            #            __add2diff__(diff_dict, ['TARGET', key], val1, val2, limit, diff_only=diff_only)
             for spw in pl1.mous['TARGET'][target]:
                 if 'value' in pl1.mous['TARGET'][target][spw].keys() or spw == 'SPW':
                     continue
                 if spw not in pl2.mous['TARGET'][target]:
                     continue
+                diff_dict['TARGET'][target]['SPW'][spw] = __image_strct__()
                 if do_mfs:
                     __add_imstats__(pl1, pl2, target, spw, 'mfs', diff_dict)
                     __add_imstats__(pl1, pl2, target, spw, 'mfs_selfcal', diff_dict)
@@ -179,9 +193,16 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                 if do_cont:
                     __add_imstats__(pl1, pl2, target, spw, 'cont', diff_dict)
                     __add_imstats__(pl1, pl2, target, spw, 'cont_selfcal', diff_dict)
+                # the following is broken
+                # cf = np.any(np.concatenate([diff_dict['TARGET'][target]['SPW'][spw][x]['CF']['value']
+                #                             for x in diff_dict['TARGET'][target]['SPW'][spw] if x != 'CF']))
+                # diff_dict['TARGET'][target]['SPW'][spw]['CF'] = {'value': bool(cf)}
+            # cf = [diff_dict['TARGET'][target]['SPW'][x]['CF']['value']
+            #       for x in diff_dict['TARGET'][target]['SPW']]
+            # diff_dict['TARGET'][target]['CF'] = {'value': bool(np.any(cf))}
     # get flux info
     if do_flux:
-        flux_list = [x for x in pl1.mous['FLUX']] if 'FLUX' in pl1.mous else []
+        flux_list = [x for x in pl1.mous['FLUX']] if ('FLUX' in pl1.mous) and ('FLUX' in pl2.mous) else []
         for flux in flux_list:
             if flux not in pl2.mous['FLUX']:
                 continue
@@ -194,7 +215,7 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_stage=True, do_target=True, do_c
                     val2 = (float(pl2.mous['FLUX'][flux]['SPW'][spw][asdm]['fitted_value'])
                             if pl2.mous['FLUX'][flux]['SPW'][spw][asdm]['fitted_value'] != -1.0 else
                             float(pl2.mous['FLUX'][flux]['SPW'][spw][asdm]['value']))
-                    __add2diff__(diff_dict, 'FLUX', key, val1, val2, limit, diff_only=diff_only)
+                    __add2diff__(diff_dict, ['FLUX', key], val1, val2, limit, diff_only=diff_only)
     return diff_dict
 
 
@@ -234,22 +255,21 @@ def __add_imstats__(pl1, pl2, target, spw, imtype, diff_dict, limit=None, diff_o
             if 'makeimages_science_' + imtype + '_max' in pl1.mous['TARGET'][target][spw] else '---')
     max2 = (pl2.mous['TARGET'][target][spw]['makeimages_science_' + imtype + '_max']['value']
             if 'makeimages_science_' + imtype + '_max' in pl2.mous['TARGET'][target][spw] else '---')
-    __add2diff__(diff_dict, 'TARGET', target + ':' + spw + ':' + imtype + '_rms', rms1, rms2, limit[0],
+    __add2diff__(diff_dict, ['TARGET', target, 'SPW', spw, imtype + '_rms'], rms1, rms2, limit[0],
                  diff_only=diff_only, less_than=True)
-    __add2diff__(diff_dict, 'TARGET', target + ':' + spw + ':' + imtype + '_max', max1, max2, limit[1],
+    __add2diff__(diff_dict, ['TARGET', target, 'SPW', spw, imtype + '_max'], max1, max2, limit[1],
                  diff_only=diff_only, less_than=False)
     if rms1 != '---' and max1 != '---' and rms2 != '---' and max2 != '---':
         sn1 = [x / y for x, y in zip(max1, rms1)]
         sn2 = [x / y for x, y in zip(max2, rms2)]
-        __add2diff__(diff_dict, 'TARGET', target + ':' + spw + ':' + imtype + '_snr', sn1, sn2, limit[2],
+        __add2diff__(diff_dict, ['TARGET', target, 'SPW', spw, imtype + '_snr'], sn1, sn2, limit[2],
                      diff_only=diff_only, less_than=False)
         # adjust the SNR and MAX 'CF' based on the S/N > 10 criteria
-        sncut = [True if x > 10 else False
-                 for x in diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_snr']['PL1']]
-        diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_max']['CF'] = list(
-            np.logical_and(diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_max']['CF'], sncut))
-        diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_snr']['CF'] = list(
-            np.logical_and(diff_dict['TARGET'][target + ':' + spw + ':' + imtype + '_snr']['CF'], sncut))
+        sncut = [True if x > 10 else False for x in sn1]
+        diff_dict['TARGET'][target]['SPW'][spw][imtype + '_max']['CF']['value'] = list(
+            np.logical_and(diff_dict['TARGET'][target]['SPW'][spw][imtype + '_max']['CF']['value'], sncut))
+        diff_dict['TARGET'][target]['SPW'][spw][imtype + '_snr']['CF']['value'] = list(
+            np.logical_and(diff_dict['TARGET'][target]['SPW'][spw][imtype + '_snr']['CF']['value'], sncut))
 
 
 def __calc_diff__(val1, val2):
@@ -260,12 +280,18 @@ def __calc_diff__(val1, val2):
     elif type(val1) == int and type(val2) == int:
         diff = int(val2 - val1)
     elif type(val1) == list and type(val2) == list:
-        diff = 'Lists are different' if len(val1) != len(val2) else []
-        for v1, v2 in zip(val1, val2):
-            diff.append(__calc_diff__(v1, v2))
+        if val1 == [] and val2 == []:
+            diff = '---'
+        else:
+            if len(val1) != len(val2):
+                diff = 'Lists are different'
+            else:
+                diff = []
+                for v1, v2 in zip(val1, val2):
+                    diff.append(__calc_diff__(v1, v2))
     else:
-        print('unknown type for comparison, will not calculate difference.')
-        print('Types are: {} and {}'.format(type(val1), type(val2)))
+        # print('unknown type for comparison, will not calculate difference.')
+        # print('Types are: {} and {}'.format(type(val1), type(val2)))
         diff = '---'
     return diff
 
@@ -278,12 +304,18 @@ def __calc_pdiff__(val1, val2):
     elif type(val1) == int and type(val2) == int:
         pdiff = 0
     elif type(val1) == list and type(val2) == list:
-        pdiff = 'Lists are different' if len(val1) != len(val2) else []
-        for v1, v2 in zip(val1, val2):
-            pdiff.append(__calc_pdiff__(v1, v2))
+        if val1 == [] and val2 == []:
+            pdiff = '---'
+        else:
+            if len(val1) != len(val2):
+                pdiff = 'Lists are different'
+            else:
+                pdiff = []
+                for v1, v2 in zip(val1, val2):
+                    pdiff.append(__calc_diff__(v1, v2))
     else:
-        print('unknown type for comparison, will not calculate percentage difference.')
-        print('Types are: {} and {}'.format(type(val1), type(val2)))
+        # print('unknown type for comparison, will not calculate percentage difference.')
+        # print('Types are: {} and {}'.format(type(val1), type(val2)))
         pdiff = '---'
     return pdiff
 
@@ -300,24 +332,34 @@ def __convdiff2csv__(diff, csvfile, sub='', comment=None):
         csvwriter.writerow([])
 
 
-def __add2diff__(diff_dict, key1, key2, val1, val2, limit, diff_only=False, ignore_str=True, less_than=True):
+def __add2diff__(diff_dict, keys, val1, val2, limit, diff_only=False, ignore_str=True, less_than=True):
     if val1 == '---' and val2 == '---':
         return
     diff, pdiff = __calc_diff__(val1, val2), __calc_pdiff__(val1, val2)
-    diff_dict[key1][key2] = {'PL1': val1, 'PL2': val2, 'diff': diff, 'pdiff': pdiff, 'CF': False}
+    diff_strct = diff_dict
+    for key in keys:
+        if key == keys[-1]:
+            diff_strct[key] = {'PL1': {'value': val1}, 'PL2': {'value': val2}, 'diff': {'value': diff},
+                               'pdiff': {'value': pdiff}, 'CF': {'value': False}}
+        else:
+            if key not in diff_strct:
+                diff_strct[key] = {}
+            else:
+                diff_strct = diff_strct[key]
+    # Here do the comparison
     if type(diff) == str:
         if diff == '---':
-            if diff_only and key2 != 'proposal_code':
-                del diff_dict[key1][key2]
+            if diff_only and 'proposal_code' not in keys:
+                return
         else:
             if not ignore_str:
-                diff_dict[key1][key2]['CF'] = True
+                diff_strct[keys[-1]]['CF'] = {'value': True}
     elif type(diff) == float or type(diff) == int:
         if (pdiff > limit and less_than) or (pdiff < limit and not less_than):
             if diff_only:
-                del diff_dict[key1][key2]
+                return
         else:
-            diff_dict[key1][key2]['CF'] = True
+            diff_strct[keys[-1]]['CF'] = {'value': True}
     elif type(diff) == list:
         if type(diff[0]) == str:
             if not ignore_str:
@@ -329,14 +371,10 @@ def __add2diff__(diff_dict, key1, key2, val1, val2, limit, diff_only=False, igno
                 cf_list = [False if x > limit else True for x in pdiff]
             else:
                 cf_list = [False if x < limit else True for x in pdiff]
-        if not np.any(cf_list):
-            if diff_only:
-                del diff_dict[key1][key2]
-            else:
-                diff_dict[key1][key2]['CF'] = cf_list
+        if diff_only:
+            return
         else:
-            diff_dict[key1][key2]['CF'] = cf_list
-        return
+            diff_strct[keys[-1]]['CF'] = {'value': cf_list}
 
 
 def __plot_timecomp__(diff, plot_timefile, mode='task_time', pldir1='pl1', pldir2='pl2'):
@@ -386,6 +424,44 @@ def __plot_timecomp__(diff, plot_timefile, mode='task_time', pldir1='pl1', pldir
             plt.close()
     return ds
 
+def __image_strct__():
+    image_strct = {'mfs_rms': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'mfs_max': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'mfs_snr': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'mfs_selfcal_rms': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'mfs_selfcal_max': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'mfs_selfcal_snr': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cube_rms': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cube_max': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cube_snr': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                               'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cube_selfcal_rms': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                        'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cube_selfcal_max': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                        'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cube_selfcal_snr': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                        'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cont_rms': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cont_max': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cont_snr': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cont_selfcal_rms': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                        'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cont_selfcal_max': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                        'pdiff': {'value': ['---']}, 'CF': {'value': []}},
+                   'cont_selfcal_snr': {'PL1': {'value': ['---']}, 'PL2': {'value': '---'}, 'diff': {'value': '---'},
+                                        'pdiff': {'value': ['---']}, 'CF': {'value': []}}}
+    return image_strct
 
 # pl1 = PLStats.from_uidname('X3827_Xce-', searchdir='/stor/naasc/sciops/comm/mneelema/CF/Data/PLStats/QACF_20250909',
 # index=0)
