@@ -168,7 +168,7 @@ class PLStats:
             self.mous['TARGET'][target]['n_images'] = {'value': n_images}
         n_images = np.sum([self.mous['TARGET'][target]['n_images']['value']
                            for target in self.mous['TARGET']])
-        self.mous['n_images'] = {'value': n_images.astype(int)}
+        self.mous['n_images'] = {'value': int(n_images)}
 
     def __init__(self):
         self.mous = {}
