@@ -312,7 +312,7 @@ def __calc_pdiff__(val1, val2):
             else:
                 pdiff = []
                 for v1, v2 in zip(val1, val2):
-                    pdiff.append(__calc_diff__(v1, v2))
+                    pdiff.append(__calc_pdiff__(v1, v2))
     else:
         # print('unknown type for comparison, will not calculate percentage difference.')
         # print('Types are: {} and {}'.format(type(val1), type(val2)))

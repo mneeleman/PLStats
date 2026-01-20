@@ -235,7 +235,6 @@ class ApplicationWindow(QtWidgets.QWidget):
         target = self.model.itemFromIndex(self.model.index(row, 1)).text()
         spw = self.model.itemFromIndex(self.model.index(row, 2)).text()
         image = self.model.horizontalHeaderItem(column).text().split(' ')[0]
-        print(row, column, target, spw, image)
         manual_flags = ''
         for c in range(self.model.columnCount()):
             if 'manual_flags' in self.model.horizontalHeaderItem(c).text():

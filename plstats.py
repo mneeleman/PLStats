@@ -5,11 +5,12 @@ from aquareport import load_aquareport
 # from tables import load_tables
 import glob
 import numpy as np
+import os.path
 
 
 class PLStats:
     @classmethod
-    def from_statsfile(cls, statsfile):
+    def from_statsfile(cls, statsfile, suppl_statsfile=None):
         tempjson = json.load(open(statsfile, 'r'))
         self = cls()
         self.statsfile = statsfile
@@ -21,6 +22,14 @@ class PLStats:
         self.mous['mous_uid'] = {'value': mouslist[0]}
         self.mous['eb_list'] = {'value': list(self.get_keywords(level='EB', return_sublevel=False))}
         self.mous['spw_list'] = {'value': list(self.get_keywords(level='SPW', return_sublevel=False))}
+        if suppl_statsfile is None:
+            suppl_statsfile = statsfile.replace('pipeline_stats_', 'pipeline-suppl_stats_')
+        if os.path.isfile(suppl_statsfile):
+            self.suppl_statsfile = suppl_statsfile
+            self.__mergedict__(json.load(open(self.suppl_statsfile, 'r')))
+            self.analyze_stats()
+        else:
+            print('Suppl_statsfile was not used for {}'.format(statsfile))
         return self
 
     @classmethod
@@ -109,32 +118,36 @@ class PLStats:
             if value_only:
                 try:
                     if subkey:
-                        return {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value'][subkey]}
+                        values = {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value'][subkey]}
                     else:
-                        return {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value']}
+                        values =  {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value']}
                 except KeyError:
-                    return {'|'.join([self.mous['mous_uid']['value'], key]): list(self.mous[key].keys())}
+                    values =  {'|'.join([self.mous['mous_uid']['value'], key]): list(self.mous[key].keys())}
             else:
-                return {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]}
-        if 'STAGE' in self.mous.keys():
-            sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
-                        'TARGET': list(self.mous['TARGET'].keys())[0], 'STAGE': list(self.mous['STAGE'].keys())[0]}
+                values = {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]}
         else:
-            sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
-                        'TARGET': list(self.mous['TARGET'].keys())[0]}
-        if key in self.mous[level]:
-            return {'|'.join([self.mous['mous_uid']['value'], level, key]): self.mous[level][key]}
-        elif key in self.mous[level][sublevel[level]]:
-            if value_only:
-                if subkey:
-                    return {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
-                            self.mous[level][x][key]['value'][subkey] for x in self.mous[level]}
-                else:
-                    return {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
-                            self.mous[level][x][key]['value'] for x in self.mous[level]}
+            if 'STAGE' in self.mous.keys():
+                sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
+                            'TARGET': list(self.mous['TARGET'].keys())[0], 'STAGE': list(self.mous['STAGE'].keys())[0]}
             else:
-                return {'|'.join([self.mous['mous_uid']['value'], level, x, key]): self.mous[level][x][key]
-                        for x in self.mous[level]}
+                sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
+                            'TARGET': list(self.mous['TARGET'].keys())[0]}
+            if key in self.mous[level]:
+                values = {'|'.join([self.mous['mous_uid']['value'], level, key]): self.mous[level][key]}
+            elif key in self.mous[level][sublevel[level]]:
+                if value_only:
+                    if subkey:
+                        values = {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
+                                  self.mous[level][x][key]['value'][subkey] for x in self.mous[level]}
+                    else:
+                        values =  {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
+                                   self.mous[level][x][key]['value'] for x in self.mous[level]}
+                else:
+                    values = {'|'.join([self.mous['mous_uid']['value'], level, x, key]): self.mous[level][x][key]
+                              for x in self.mous[level]}
+            else:
+                values = {}
+        return values
 
     def analyze_stats(self):
         self.mous['manual_flags'] = {'value': []}
@@ -180,7 +193,7 @@ class PLStats:
         elif key in self.get_keywords(level='STAGE'):
             return 'STAGE'
         else:
-            return ValueError('Keyword not found: {}'.format(key))
+            return 'N/A'
 
 
 def findkeys(node, kv):
