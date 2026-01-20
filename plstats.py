@@ -2,14 +2,15 @@
 # ideally the code would take info only from stats file, but for know allow other inputs
 import json
 from aquareport import load_aquareport
-from tables import load_tables
+# from tables import load_tables
 import glob
 import numpy as np
+import os.path
 
 
 class PLStats:
     @classmethod
-    def from_statsfile(cls, statsfile):
+    def from_statsfile(cls, statsfile, suppl_statsfile=None):
         tempjson = json.load(open(statsfile, 'r'))
         self = cls()
         self.statsfile = statsfile
@@ -21,6 +22,14 @@ class PLStats:
         self.mous['mous_uid'] = {'value': mouslist[0]}
         self.mous['eb_list'] = {'value': list(self.get_keywords(level='EB', return_sublevel=False))}
         self.mous['spw_list'] = {'value': list(self.get_keywords(level='SPW', return_sublevel=False))}
+        if suppl_statsfile is None:
+            suppl_statsfile = statsfile.replace('pipeline_stats_', 'pipeline-suppl_stats_')
+        if os.path.isfile(suppl_statsfile):
+            self.suppl_statsfile = suppl_statsfile
+            self.__mergedict__(json.load(open(self.suppl_statsfile, 'r')))
+            self.analyze_stats()
+        else:
+            print('Suppl_statsfile was not used for {}'.format(statsfile))
         return self
 
     @classmethod
@@ -30,12 +39,12 @@ class PLStats:
         self.mous = load_aquareport(arfile, timefile=timefile)
         return self
 
-    @classmethod
-    def from_tablelist(cls, tablelist):
-        self = cls()
-        self.tablelist = tablelist
-        self.mous = load_tables(tablelist)
-        return self
+    # @classmethod
+    # def from_tablelist(cls, tablelist):
+    #     self = cls()
+    #     self.tablelist = tablelist
+    #     self.mous = load_tables(tablelist)
+    #     return self
 
     @classmethod
     def from_workingdir(cls, workdir, use_statsfile=True, use_arfile=True, use_tables=False, use_timefile=True):
@@ -55,16 +64,23 @@ class PLStats:
                 self.__mergedict__(self.from_aquareport(self.workdir + '/' + self.arfile).mous)
         self.tablelist = [x.split('/')[-1] for x in glob.glob(workdir + '/*.tbl')]
         if self.tablelist and use_tables:
-            self.__mergedict__(self.from_tablelist([self.workdir + '/' + x for x in self.tablelist]).mous)
+            pass
+        #     self.__mergedict__(self.from_tablelist([self.workdir + '/' + x for x in self.tablelist]).mous)
         return self
 
     @classmethod
     def from_uidname(cls, uid_name, searchdir='.', index=0):
         self = cls()
         uid_list = glob.glob(searchdir + '/pipeline_stats_*.json')
-        all_uid = [x for x in uid_list if uid_name in x]
+        all_uid = sorted([x for x in uid_list if uid_name in x])
         self.statsfile = all_uid[index]
         self.__mergedict__(self.from_statsfile(self.statsfile).mous)
+        uid_supplist = glob.glob(searchdir + '/pipeline_aquareport-*.xml')
+        ar_file = self.statsfile.replace('pipeline_stats_', 'pipeline_aquareport-')
+        ar_file = ar_file.replace('json', 'xml')
+        self.arfile = ar_file if ar_file in uid_supplist else ''
+        if self.arfile != '':
+            self.__mergedict__(self.from_aquareport(self.arfile).mous)
         uid_supplist = glob.glob(searchdir + '/pipeline-suppl_stats_*.json')
         suppl_file = self.statsfile.replace('pipeline', 'pipeline-suppl')
         self.suppl_statsfile = suppl_file if suppl_file in uid_supplist else ''
@@ -102,72 +118,53 @@ class PLStats:
             if value_only:
                 try:
                     if subkey:
-                        return {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value'][subkey]}
+                        values = {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value'][subkey]}
                     else:
-                        return {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value']}
+                        values =  {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]['value']}
                 except KeyError:
-                    return {'|'.join([self.mous['mous_uid']['value'], key]): list(self.mous[key].keys())}
+                    values =  {'|'.join([self.mous['mous_uid']['value'], key]): list(self.mous[key].keys())}
             else:
-                return {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]}
-        if 'STAGE' in self.mous.keys():
-            sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
-                        'TARGET': list(self.mous['TARGET'].keys())[0], 'STAGE': list(self.mous['STAGE'].keys())[0]}
+                values = {'|'.join([self.mous['mous_uid']['value'], key]): self.mous[key]}
         else:
-            sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
-                        'TARGET': list(self.mous['TARGET'].keys())[0]}
-        if key in self.mous[level]:
-            return {'|'.join([self.mous['mous_uid']['value'], level, key]): self.mous[level][key]}
-        elif key in self.mous[level][sublevel[level]]:
-            if value_only:
-                if subkey:
-                    return {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
-                            self.mous[level][x][key]['value'][subkey] for x in self.mous[level]}
-                else:
-                    return {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
-                            self.mous[level][x][key]['value'] for x in self.mous[level]}
+            if 'STAGE' in self.mous.keys():
+                sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
+                            'TARGET': list(self.mous['TARGET'].keys())[0], 'STAGE': list(self.mous['STAGE'].keys())[0]}
             else:
-                return {'|'.join([self.mous['mous_uid']['value'], level, x, key]): self.mous[level][x][key]
-                        for x in self.mous[level]}
+                sublevel = {'MOUS': '', 'EB': list(self.mous['EB'].keys())[0], 'SPW': list(self.mous['SPW'].keys())[0],
+                            'TARGET': list(self.mous['TARGET'].keys())[0]}
+            if key in self.mous[level]:
+                values = {'|'.join([self.mous['mous_uid']['value'], level, key]): self.mous[level][key]}
+            elif key in self.mous[level][sublevel[level]]:
+                if value_only:
+                    if subkey:
+                        values = {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
+                                  self.mous[level][x][key]['value'][subkey] for x in self.mous[level]}
+                    else:
+                        values =  {'|'.join([self.mous['mous_uid']['value'], level, x, key]):
+                                   self.mous[level][x][key]['value'] for x in self.mous[level]}
+                else:
+                    values = {'|'.join([self.mous['mous_uid']['value'], level, x, key]): self.mous[level][x][key]
+                              for x in self.mous[level]}
+            else:
+                values = {}
+        return values
 
     def analyze_stats(self):
+        self.mous['manual_flags'] = {'value': []}
         for eb in self.mous['EB']:
             n_manualflags = len(self.mous['EB'][eb]['flagdata_manual_flags']['value'])
             self.mous['EB'][eb]['n_manualflags'] = {'value': n_manualflags}
+            self.mous['manual_flags']['value'].extend(self.mous['EB'][eb]['flagdata_manual_flags']['value'])
         for target in self.mous['TARGET']:
-            cubes, mfss, conts = [[], [], [], [], []], [[], [], [], [], []], [[], [], [], [], []]
-            pars = ['bmaj', 'bmin', 'bpa', 'rms', 'max']
-            for x in self.mous['TARGET'][target]:
-                for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
-                    if 'makeimages_science_cube_' + par in self.mous['TARGET'][target][x]:
-                        cubemed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cube_' +
-                                                                              par]['value'])
-                        cube.append(cubemed.astype(float).item())
-                    elif 'makeimages_science_cube_selfcal_' + par in self.mous['TARGET'][target][x]:
-                        cubemed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cube_selfcal_' +
-                                                                              par]['value'])
-                        cube.append(cubemed.astype(float).item())
-                    if 'makeimages_science_mfs_' + par in self.mous['TARGET'][target][x]:
-                        mfsmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_mfs_' + par]['value'])
-                        mfs.append(mfsmed.astype(float).item())
-                    elif 'makeimages_science_mfs_selfcal_' + par in self.mous['TARGET'][target][x]:
-                        mfsmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_mfs_selfcal_' +
-                                                                             par]['value'])
-                        mfs.append(mfsmed.astype(float).item())
-                    if 'makeimages_science_cont_' + par in self.mous['TARGET'][target][x]:
-                        contmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cont_' +
-                                                                              par]['value'])
-                        cont.append(contmed.astype(float).item())
-                    elif 'makeimages_science_cont_selfcal_' + par in self.mous['TARGET'][target][x]:
-                        contmed = np.nanmedian(self.mous['TARGET'][target][x]['makeimages_science_cont_selfcal_' +
-                                                                              par]['value'])
-                        cont.append(contmed.astype(float).item())
-            for par, cube, mfs, cont in zip(pars, cubes, mfss, conts):
-                self.mous['TARGET'][target]['median_cube_' + par] = {'value': np.nanmedian(cube)}
-                self.mous['TARGET'][target]['median_mfs_' + par] = {'value': np.nanmedian(mfs)}
-                self.mous['TARGET'][target]['median_cont_' + par] = {'value': np.nanmedian(cont)}
-            self.mous['TARGET'][target]['median_cube_sn'] = {'value': np.nanmedian(cubes[4]) / np.nanmedian(cubes[3])}
-            self.mous['TARGET'][target]['median_mfs_sn'] = {'value': np.nanmedian(mfss[4]) / np.nanmedian(mfss[3])}
-            self.mous['TARGET'][target]['median_cont_sn'] = {'value': np.nanmedian(conts[4]) / np.nanmedian(conts[3])}
+            for spw in self.mous['TARGET'][target]:
+                n_images = len([x for x in self.mous['TARGET'][target][spw].keys() if 'rms' in x])
+                self.mous['TARGET'][target][spw]['n_images'] = {'value': n_images}
+            n_images = np.sum([self.mous['TARGET'][target][spw]['n_images']['value']
+                               for spw in self.mous['TARGET'][target]])
+            self.mous['TARGET'][target]['n_images'] = {'value': n_images}
+        n_images = np.sum([self.mous['TARGET'][target]['n_images']['value']
+                           for target in self.mous['TARGET']])
+        self.mous['n_images'] = {'value': n_images}
 
     def __init__(self):
         self.mous = {}
@@ -196,7 +193,7 @@ class PLStats:
         elif key in self.get_keywords(level='STAGE'):
             return 'STAGE'
         else:
-            return ValueError('Keyword not found: {}'.format(key))
+            return 'N/A'
 
 
 def findkeys(node, kv):
