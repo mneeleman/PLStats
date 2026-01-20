@@ -32,6 +32,7 @@ class PLStatsList:
                 uid_name = uid_name.strip()
                 if uid_name[0] != '#':
                     self.statslist.append(PLStats.from_uidname(uid_name, searchdir=self.directory, index=index))
+        return self
 
     def apply_criterion(self, key, operator, criterion):
         new_list = []
