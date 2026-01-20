@@ -93,6 +93,8 @@ class PLStats:
         if level == 'MOUS':
             keywords = list(self.mous.keys())
         else:
+            if level not in self.mous.keys():
+                return []
             if return_sublevel:
                 sublevel = list(self.mous[level].keys())[0]
                 keywords = list(self.mous[level][sublevel].keys())
