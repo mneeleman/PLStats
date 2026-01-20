@@ -116,6 +116,8 @@ class PLStats:
     def get_values(self, key, level=None, subkey=None, value_only=False):
         if not level:
             level = self.__get_level__(key)
+            if level is 'N/A':
+                return {}
         if key in self.mous and level == 'MOUS':
             if value_only:
                 try:
