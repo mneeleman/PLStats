@@ -153,9 +153,9 @@ def create_diff_dict(pl1, pl2, do_mous=True, do_eb=True, do_stage=True, do_targe
                 key = stage[0] + ':' + pl1.mous['STAGE'][stage[0]]['stage_name']['value'] + ':' + k
                 if k in pl1.mous['STAGE'][stage[0]] and k in pl2.mous['STAGE'][stage[1]]:
                     val1 = pl1.mous['STAGE'][stage[0]][k]['value']
-                    val1 = float(val1) if val1 != 'None' else -1.
+                    val1 = float(val1) if val1 != 'None' else float(-1)
                     val2 = pl2.mous['STAGE'][stage[1]][k]['value']
-                    val2 = float(val2) if val2 != 'None' else -1.
+                    val2 = float(val2) if val2 != 'None' else float(-1)
                     __add2diff__(diff_dict, ['STAGE', key], val1, val2, limit, diff_only=diff_only)
     # get sensitivity info
     if do_target:
