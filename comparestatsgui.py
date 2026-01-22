@@ -1,6 +1,9 @@
 import os
 import sys
 import glob
+
+from astropy.io.fits.util import first
+
 from plstats import PLStats
 from comparestats import create_diff_dict
 from copy import deepcopy as dc
@@ -272,7 +275,9 @@ class ApplicationWindow(QtWidgets.QWidget):
 
     def get_keywords(self, level, ignore=None):
         if level == 'IMAGE':
-            first_target = list([x for x in self.statslist[0]['TARGET'].keys() if x != 'CF'])[0]
+            first_target = []
+            while first_target == []:
+                first_target = list([x for x in self.statslist[0]['TARGET'].keys() if x != 'CF'])[0]
             first_spw = list(self.statslist[0]['TARGET'][first_target]['SPW'].keys())[0]
             keywords = list(self.statslist[0]['TARGET'][first_target]['SPW'][first_spw].keys())
         else:
