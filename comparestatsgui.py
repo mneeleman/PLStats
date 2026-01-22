@@ -8,11 +8,12 @@ import numpy as np
 from matplotlib.backends.qt_compat import QtWidgets, QtCore, QtGui
 from matplotlib.backends.backend_qtagg import FigureCanvas, NavigationToolbar2QT
 from matplotlib.figure import Figure
+import json
 
 
 class ApplicationWindow(QtWidgets.QWidget):
 
-    def __init__(self, directory, dir_type='cfdir', uid_names=None):
+    def __init__(self, input1, uid_names=None):
         # overall image parameters of gui window
         super().__init__()
         self.left = 20
@@ -20,15 +21,15 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.width = 1500
         self.height = 1000
         # defining the data
-        self.directory = directory
+        self.input1 = input1.strip()
         self.statslist = []
         self.newstatslist = []
-        if dir_type == 'Benchmark':
-            raise IOError('Benchmark comparison not implemented yet!')
-        elif dir_type == 'cfdir':
-            self.load_cf(uid_names=uid_names)
+        if self.input1[-4:] == 'json':
+            print('Assuming this is a JSON diff file')
+            self.load_json()
         else:
-            raise IOError('{} is not a valid directory type.'.format(dir_type))
+            print('Assuming this is a directory with pipeline-stats and pipeline_suppl-stats files')
+            self.load_cf(uid_names=uid_names)
         # create the headers from the first stats file
         self.mousheaders = self.get_keywords(level='MOUS', ignore=['EB', 'SPW', 'TARGET', 'FLUX', 'STAGE'])
         self.ebheaders = self.get_keywords(level='EB')
@@ -76,7 +77,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         self.reset_data()
 
     def init_ui(self):
-        self.setWindowTitle(self.directory)
+        self.setWindowTitle(self.input1)
         self.setGeometry(self.left, self.top, self.width, self.height)
         self.get_table_layout()
         self.get_columnselect_layout()
@@ -252,17 +253,22 @@ class ApplicationWindow(QtWidgets.QWidget):
             uid_names = [uid_names]
         if uid_names is None:
             uid_names = np.unique([x.split('___')[-1].split('-')[0] + '-'
-                                   for x in glob.glob(self.directory + '/pipeline_stats*')])
+                                   for x in glob.glob(self.input1 + '/pipeline_stats*')])
         for uid_name in uid_names:
             print(uid_name)
-            pl1 = PLStats.from_uidname(uid_name, searchdir=self.directory, index=0)
-            pl2 = PLStats.from_uidname(uid_name, searchdir=self.directory, index=-1)
+            pl1 = PLStats.from_uidname(uid_name, searchdir=self.input1, index=0)
+            pl2 = PLStats.from_uidname(uid_name, searchdir=self.input1, index=-1)
             diff = create_diff_dict(pl1, pl2)
             self.statslist.append(diff)
         if len(self.statslist) == 0:
-            raise IOError('No json stat files found in: {}'.format(self.directory))
+            raise IOError('No json stat files found in: {}'.format(self.input1))
         self.newstatslist = dc(self.statslist)
         print('Done loading the diff structure')
+
+    def load_json(self):
+        with open(self.input1, 'r') as file:
+            self.statslist = json.load(file)
+            self.newstatslist = dc(self.statslist)
 
     def get_keywords(self, level, ignore=None):
         if level == 'IMAGE':
