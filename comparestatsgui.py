@@ -275,9 +275,8 @@ class ApplicationWindow(QtWidgets.QWidget):
 
     def get_keywords(self, level, ignore=None):
         if level == 'IMAGE':
-            first_target = []
-            while first_target == []:
-                first_target = list([x for x in self.statslist[0]['TARGET'].keys() if x != 'CF'])[0]
+            first_target = list([x for x in self.statslist[0]['TARGET'].keys() if x != 'CF'])[0]
+            print(first_target)
             first_spw = list(self.statslist[0]['TARGET'][first_target]['SPW'].keys())[0]
             keywords = list(self.statslist[0]['TARGET'][first_target]['SPW'][first_spw].keys())
         else:
