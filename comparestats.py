@@ -266,10 +266,10 @@ def __add_imstats__(pl1, pl2, target, spw, imtype, diff_dict, limit=None, diff_o
                      diff_only=diff_only, less_than=False)
         # adjust the SNR and MAX 'CF' based on the S/N > 10 criteria
         sncut = [True if x > 10 else False for x in sn1]
-        diff_dict['TARGET'][target]['SPW'][spw][imtype + '_max']['CF']['value'] = list(
-            np.logical_and(diff_dict['TARGET'][target]['SPW'][spw][imtype + '_max']['CF']['value'], sncut))
-        diff_dict['TARGET'][target]['SPW'][spw][imtype + '_snr']['CF']['value'] = list(
-            np.logical_and(diff_dict['TARGET'][target]['SPW'][spw][imtype + '_snr']['CF']['value'], sncut))
+        diff_dict['TARGET'][target]['SPW'][spw][imtype + '_max']['CF']['value'] = \
+            np.logical_and(diff_dict['TARGET'][target]['SPW'][spw][imtype + '_max']['CF']['value'], sncut).tolist()
+        diff_dict['TARGET'][target]['SPW'][spw][imtype + '_snr']['CF']['value'] = \
+            np.logical_and(diff_dict['TARGET'][target]['SPW'][spw][imtype + '_snr']['CF']['value'], sncut).tolist()
 
 
 def __calc_diff__(val1, val2):
