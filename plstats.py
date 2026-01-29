@@ -158,7 +158,8 @@ class PLStats:
         for eb in self.mous['EB']:
             n_manualflags = len(self.mous['EB'][eb]['flagdata_manual_flags']['value'])
             self.mous['EB'][eb]['n_manualflags'] = {'value': n_manualflags}
-            self.mous['manual_flags']['value'].extend(eb + ' ' + self.mous['EB'][eb]['flagdata_manual_flags']['value'])
+            pereb_flags = [eb + ' ' + x for x in self.mous['EB'][eb]['flagdata_manual_flags']['value']]
+            self.mous['manual_flags']['value'].extend(pereb_flags)
         for target in self.mous['TARGET']:
             for spw in self.mous['TARGET'][target]:
                 n_images = len([x for x in self.mous['TARGET'][target][spw].keys() if 'rms' in x])
