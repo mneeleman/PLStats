@@ -1,9 +1,6 @@
 import os
 import sys
 import glob
-
-from astropy.io.fits.util import first
-
 from plstats import PLStats
 from comparestats import create_diff_dict
 from copy import deepcopy as dc
@@ -213,7 +210,7 @@ class ApplicationWindow(QtWidgets.QWidget):
         for x in range(self.model.columnCount()):
             if self.tableview.columnWidth(x) > 300:
                 self.tableview.setColumnWidth(x, 300)
-        self.tableview.setSortingEnabled(True)
+        self.tableview.setSortingEnabled(False)
 
     def reset_data(self):
         self.newstatslist = dc(self.statslist)
@@ -244,8 +241,10 @@ class ApplicationWindow(QtWidgets.QWidget):
             if 'manual_flags' in self.model.horizontalHeaderItem(c).text():
                 manual_flags = self.model.itemFromIndex(self.model.index(row, c)).text()
                 break
-        self.expandcell.setText(self.model.itemFromIndex(self.model.index(row, column)).text())
+        text = self.model.itemFromIndex(self.model.index(row, column)).text().replace('",', '"\n')
+        self.expandcell.setText(text)
         if ('rms' in image) or ('max' in image) or ('snr' in image):
+            print(target, spw, image, manual_flags)
             diff_dict = [x for x in self.newstatslist if x['MOUS']['mous_uid']['PL1']['value'] == mous_uid][0]
             diff_strct = diff_dict['TARGET'][target]['SPW'][spw][image]
             self.new_window = PlotWindow(diff_strct, image, manual_flags)
